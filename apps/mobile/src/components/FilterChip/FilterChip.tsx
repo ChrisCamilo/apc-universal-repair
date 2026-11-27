@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { toggleExclusive, toggleValue } from '@apc/ui-spec/filters';
+import { tourTarget } from '../Tour/tourTargets';
 import { useGroupStyles, useStyles } from './FilterChip.styles';
 
 // Toggle chips for quick filters, the same as the web. A chip says whether it is on to screen readers and
@@ -19,6 +20,8 @@ type FilterChipGroupProps = {
   label: string;
   options: ChipOption[];
   size?: ChipSize;
+  /** Marks the group for a tutorial to point at, by name (see tourTarget). */
+  tour?: string;
 } & (
   | { multiple: true; value: string[]; onValueChange: (value: string[]) => void }
   | { multiple?: false; value: string | null; onValueChange: (value: string | null) => void }
@@ -53,11 +56,11 @@ export function FilterChip({ pressed: on, onPressedChange, size = 'md', title, c
 }
 
 export function FilterChipGroup(props: FilterChipGroupProps) {
-  const { label, options, size = 'md' } = props;
+  const { label, options, size = 'md', tour } = props;
   const order = options.map((o) => o.value);
   const { styles, ids } = useGroupStyles();
   return (
-    <View role="group" accessibilityLabel={label} style={styles.group} testID={ids.group}>
+    <View ref={tour ? tourTarget(tour) : undefined} collapsable={false} role="group" accessibilityLabel={label} style={styles.group} testID={ids.group}>
       {options.map((option) => (
         <FilterChip
           key={option.value}

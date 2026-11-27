@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { tourTarget } from '../../components/Tour';
 import { useBarStyles } from './Dashboard.styles';
 
 // An entry of the Dashboard's bottom bar that isn't a tab, such as Alertas or Conta, the same as the web: a button with
@@ -16,12 +17,15 @@ type BottomBarItemProps = {
   onPress: () => void;
   /** The picture in the pill, e.g. the bell with its badge. */
   children: ReactNode;
+  /** Marks the item for a tutorial to point at, by name (see tourTarget). */
+  tour?: string;
 };
 
-export function BottomBarItem({ label, name, expanded, onPress, children }: BottomBarItemProps) {
+export function BottomBarItem({ label, name, expanded, onPress, children, tour }: BottomBarItemProps) {
   const { styles, ids } = useBarStyles();
   return (
     <Pressable
+      ref={tour ? tourTarget(tour) : undefined}
       accessibilityRole="button"
       accessibilityLabel={name ?? label}
       accessibilityState={{ expanded }}

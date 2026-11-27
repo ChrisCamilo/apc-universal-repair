@@ -34,7 +34,7 @@ import {
   matchingCount,
 } from '@apc/domain/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
-import { INVENTORY_TUTORIALS, inventoryTutorialParts, isTestItem, TUTORIAL_CODE, TUTORIAL_ITEM } from '@apc/domain/inventory-tutorial';
+import { inventoryTutorialParts, isTestItem, TUTORIAL_CODE, TUTORIAL_ITEM } from '@apc/domain/inventory-tutorial';
 import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
@@ -446,7 +446,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // Run the tour by itself the first time, from its first part on, once the items are in and the server answered, and a
   // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
-  const asked = tutorial.asked && (INVENTORY_TUTORIALS as readonly string[]).includes(tutorial.asked.id) ? tutorial.asked : null;
+  const { asked } = tutorial;
   if (!tour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
     setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true));
     clearForTutorial();
@@ -538,6 +538,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             onPress={() => setSorting(true)}
           />
           <FilterChipGroup
+            tour="status"
             label={texts.status}
             options={statusOptions(items, locale)}
             value={status}
@@ -554,7 +555,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           />
         </View>
         {((copy.offline && copy.syncedAt) || copy.waiting > 0 || copy.conflicts.length > 0) && (
-          <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
+          <View ref={tourTarget('sync')} collapsable={false} accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">
               {[
                 copy.blocked ? network.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt, locale),
@@ -576,7 +577,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             )}
           </View>
         )}
-        <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
+        <View ref={tourTarget('items')} collapsable={false} style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
           {failed && (
             <ErrorState
               title={texts.error.title}

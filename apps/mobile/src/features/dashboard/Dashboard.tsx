@@ -23,6 +23,8 @@ import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts';
 import { perLocale } from '@apc/domain/locale';
 import { TUTORIALS } from '@apc/domain/tutorials';
 import { useLocale } from '../../app/locale';
+import { tourTarget } from '../../components/Tour';
+import { ExplanationTour } from './ExplanationTour';
 
 // The frame of the Dashboard, the same as the web's on a phone: the open tab's header, with the APC mark and the tab's
 // name as the screen's heading, the tab's content under it, scrolling its own content, and a bar at the bottom of the
@@ -32,7 +34,8 @@ import { useLocale } from '../../app/locale';
 // order, which is saved and comes back, with tabs added later at its end;
 // the open tab stays open. The Dashboard also holds the tutorials' state: a tutorial the user menu's Tutoriais starts
 // opens its tab, which runs it, as the Inventory tab runs its tour by itself on the user's first login, whatever the
-// device (see tutorialsContext.ts). A tab still being built (`wip` in
+// device (see tutorialsContext.ts); an explanation the Dashboard runs itself, over its tab if it has one (see
+// ExplanationTour.tsx). A tab still being built (`wip` in
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet. The open tab may put a "⋯" at the right of its name,
 // which opens what the tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a
 // screen deeper, such as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark
@@ -113,9 +116,12 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
         <TutorialsContext.Provider
           value={{
             ...tutorials,
-            // A tutorial runs on its feature's tab.
+            // A tutorial runs on its feature's tab, if it has one.
             start: (id, onward) => {
-              setTab(TUTORIALS.find((tutorial) => tutorial.id === id)!.feature);
+              const opens = TUTORIALS.find((tutorial) => tutorial.id === id)!.tab;
+              if (opens) {
+                setTab(opens);
+              }
               tutorials.start(id, onward);
             },
           }}
@@ -141,6 +147,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
                     </View>
                     {more && (
                       <Pressable
+                        ref={tourTarget('more-actions')}
                         accessibilityRole="button"
                         accessibilityLabel={common.moreActions}
                         onPress={more}
@@ -170,6 +177,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
                     {userMenu}
                   </View>
                 </View>
+                <ExplanationTour id={tutorials.explaining} onClose={tutorials.explained} />
               </InventoryLinkContext.Provider>
             </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>

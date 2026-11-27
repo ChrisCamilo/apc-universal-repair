@@ -49,7 +49,7 @@ export function NotificationsMenu({ userId }: { userId: string }) {
 
   return (
     <>
-      <BottomBarItem label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onPress={show}>
+      <BottomBarItem tour="bell" label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onPress={show}>
         <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} color={colors.textMuted} />
         {badge !== '' && (
           <View style={bar.styles.badge} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden testID={bar.ids.badge}>

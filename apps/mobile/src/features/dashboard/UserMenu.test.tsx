@@ -268,13 +268,16 @@ test('Mobile: Sair comes last, apart from the preferences, and logs out', async 
 });
 
 // Presses "Tutoriais" and checks it opens the phone's tutorials by feature, the Inventory's section open with its three
-// tutorials, each saying what it is, its kind and its steps; pressing one closes the dialog and starts it alone.
+// tours and its explanations, each saying what it is, its kind and its steps, and the Modo offline's section, only on the
+// phone; pressing one closes the dialog and starts it alone.
 test('Mobile: Tutoriais opens the tutorials by feature, and a tutorial starts its tour', async () => {
   start.mockClear();
   const tree = await openMenu();
   await press(tree, 'Tutoriais');
   expect(tree.root.findByType(TutorialsDialog).props.open).toBe(true);
-  expect(byName(tree, 'Estoque, 3 tutoriais').props.accessibilityState).toEqual({ expanded: true });
+  expect(byName(tree, 'Estoque, 8 tutoriais').props.accessibilityState).toEqual({ expanded: true });
+  expect(byName(tree, 'Modo offline, 2 tutoriais').props.accessibilityState).toEqual({ expanded: true });
+  expect(byName(tree, 'As listas').props.accessibilityHint).toBe('Renomeie e junte categorias, marcas de peça e modelos de veículo. Explicação · 2 passos');
   expect(byName(tree, 'Procurar e filtrar').props.accessibilityHint).toBe('Ache a peça de teste pela busca e pelos filtros. Tour guiado · 4 passos');
   expect(byName(tree, 'Cadastrar um item')).toBeDefined();
   expect(byName(tree, 'Editar e excluir').props.accessibilityHint).toMatch(/Tour guiado · 10 passos$/);
@@ -289,7 +292,7 @@ test('Mobile: Tutoriais reads in English', async () => {
   const tree = await mount();
   await press(tree, 'Account');
   await press(tree, 'Tutorials');
-  expect(byName(tree, 'Inventory, 3 tutorials')).toBeDefined();
+  expect(byName(tree, 'Inventory, 8 tutorials')).toBeDefined();
   expect(byName(tree, 'Add an item').props.accessibilityHint).toBe('Add a test part, with its code, vehicle, stock and price. Guided tour · 4 steps');
 });
 
@@ -301,7 +304,7 @@ function ActiveTheme() {
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {} }}>{children}</TutorialsContext.Provider>
+      <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {}, explaining: null, explained: () => {} }}>{children}</TutorialsContext.Provider>
     </TabReorderContext.Provider>
   );
 }

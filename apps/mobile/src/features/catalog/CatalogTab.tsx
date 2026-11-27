@@ -69,6 +69,7 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 import { COMMON_TEXTS } from '@apc/domain/app-texts';
 import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
 import { PHONE_TEXTS } from '../../app/phoneTexts';
+import { tourTarget } from '../../components/Tour';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/domain/catalog). The brands, each on a line with how many models and sheets it has; a brand's
@@ -343,7 +344,9 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
 
   const search = (
     <>
-      <SearchField label={texts.searchModel} value={query} onValueChange={setQuery} />
+      <View ref={tourTarget('catalog-search')} collapsable={false}>
+        <SearchField label={texts.searchModel} value={query} onValueChange={setQuery} />
+      </View>
       {searchingParts && <PartResults results={results} onChoose={choosePart} />}
     </>
   );
@@ -384,7 +387,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           </RNText>
           <ImageFrame alt={texts.sheetPhoto(sheet.title)} emptyLabel={texts.noModelPhoto} />
           <Heading level={2}>{sheet.title}</Heading>
-          <View style={styles.readouts} testID={ids.readouts}>
+          <View ref={tourTarget('catalog-sheet')} collapsable={false} style={styles.readouts} testID={ids.readouts}>
             {sheet.specs.map((spec, index) => (
               <View key={ENGINE_SPEC_LABELS[locale][index]} style={styles.readout} testID={ids.readout}>
                 <RNText style={styles.readoutLabel} testID={ids.readoutLabel}>
@@ -480,7 +483,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           </Button>
         </View>
         {brands.length > 0 ? (
-          <View style={styles.brandList} testID={ids.brandList}>
+          <View ref={tourTarget('catalog-brands')} collapsable={false} style={styles.brandList} testID={ids.brandList}>
             {brands.map((each) => (
               <Pressable
                 key={each.id}
