@@ -70,7 +70,8 @@ async function runEach(platform: TutorialPlatform) {
       if (target) {
         await expect.poll(() => ringed(target), { message: step.id }).toBe(true)
       } else {
-        expect(document.querySelector('[data-testid="common.tour.spotlight"]')).toBeNull()
+        // The tour draws each frame, so the step before's spotlight leaves on the next one.
+        await expect.poll(() => document.querySelector('[data-testid="common.tour.spotlight"]'), { message: step.id }).toBeNull()
       }
       await screen.getByRole('button', { name: index === steps.length - 1 ? 'Concluir' : 'Próximo' }).click()
     }
