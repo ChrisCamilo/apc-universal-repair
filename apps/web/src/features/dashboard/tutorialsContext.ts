@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { INVENTORY_TUTORIAL_STORAGE_KEY, type InventoryTutorialId } from '@apc/domain/inventory-tutorial'
-import { isExplanation, type ExplanationId, type TutorialId } from '@apc/domain/tutorials'
+import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/domain/inventory-tutorial'
+import { isExplanation, type ExplanationId, type TourId, type TutorialId } from '@apc/domain/tutorials'
 import { useSession } from '../auth/sessionContext.ts'
 import { removeStored } from '../../app/storage.ts'
 
@@ -8,7 +8,7 @@ import { removeStored } from '../../app/storage.ts'
 export const TutorialsContext = createContext<TutorialsChoice | null>(null)
 
 /** A guided tour asked for: which, and whether it goes on through the next ones, until its tab starts it. */
-export type TutorialRequest = { id: InventoryTutorialId; onward: boolean }
+export type TutorialRequest = { id: TourId; onward: boolean }
 export type TutorialsChoice = {
   /** Whether the logged user has seen the Inventory tour, on any device; until then it runs by itself. */
   seen: boolean
