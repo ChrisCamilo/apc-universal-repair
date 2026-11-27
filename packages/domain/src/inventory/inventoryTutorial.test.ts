@@ -98,6 +98,17 @@ test("Shared: the tutorial has three parts, opening the item from its row", () =
   assert.deepEqual(INVENTORY_TUTORIAL_PARTS["pt-BR"], ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"]);
 });
 
+// Lists the steps of one part, then of the last two, and checks each run keeps only its parts' steps, in order, the
+// same steps the whole tour has, with "Pronto!" left to the whole tour.
+test("Shared: the tutorial runs a part alone, or the parts from one on", () => {
+  const ids = (parts: number[]) => inventoryTutorialSteps(() => fakeScreen().screen, "pt-BR", parts).map((step) => step.id);
+  assert.deepEqual(ids([2]), ["search", "filters", "filter", "found"]);
+  assert.deepEqual(ids([1]), ["new", "identity", "stock", "save"]);
+  assert.deepEqual(ids([3]).slice(-2), ["delete", "confirm"]);
+  assert.deepEqual(ids([2, 3]).slice(0, 5), ["search", "filters", "filter", "found", "details"]);
+  assert.equal(ids([1, 2, 3]).at(-1), "end");
+});
+
 // Checks a form matches typed values ignoring case, accents and spaces and the price by its value, and that applied
 // filters hold the wanted values among others.
 test("Shared: the tutorial reads the form and the filters loosely", () => {

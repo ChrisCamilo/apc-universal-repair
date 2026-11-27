@@ -19,6 +19,7 @@ import { NOTIFICATION_TEXTS } from "../../notifications/notificationTexts.ts";
 import { CONFLICT_MESSAGES } from "../../sync/conflicts.ts";
 import { copyNotice } from "../../sync/copy.ts";
 import { INVENTORY_NEEDS_SERVER } from "../../sync/queue.ts";
+import { TUTORIAL_TEXTS } from "../../tutorials/tutorials.ts";
 import { sortOptions } from "../query/listQuery.ts";
 import { COMMON_TEXTS, COMPONENT_TEXTS, DASHBOARD_TEXTS } from "./appTexts.ts";
 
@@ -99,6 +100,9 @@ test("Shared: the photos, the sync and the tutorial speak English", () => {
   assert.equal(INVENTORY_NEEDS_SERVER["en-US"].export, "No connection to the server. Exporting can only be done with it.");
   assert.equal(CONFLICT_MESSAGES["en-US"].keepMine, "Keep the phone's");
   assert.deepEqual(INVENTORY_TUTORIAL_PARTS["en-US"], ["Add an item", "Search and filter", "Edit and delete"]);
+  const tutorials = TUTORIAL_TEXTS["en-US"];
+  assert.deepEqual([tutorials.title, tutorials.count(1), tutorials.count(3), tutorials.steps(1), tutorials.steps(4)], ["Tutorials", "1 tutorial", "3 tutorials", "1 step", "4 steps"]);
+  assert.deepEqual([tutorials.kinds.tour, tutorials.descriptions["inventory-search"]], ["Guided tour", "Find the test part with the search and the filters."]);
 });
 
 // Builds the screens' texts both apps write in English: the shared actions, the components, the Dashboard, the login,

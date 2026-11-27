@@ -128,6 +128,10 @@
       "apc-dist": "./dist/inventory/inventoryTutorial.js",
       "default": "./src/inventory/inventoryTutorial.ts"
     },
+    "./tutorials": {
+      "apc-dist": "./dist/tutorials/tutorials.js",
+      "default": "./src/tutorials/tutorials.ts"
+    },
     "./list-query": {
       "apc-dist": "./dist/platform/query/listQuery.js",
       "default": "./src/platform/query/listQuery.ts"

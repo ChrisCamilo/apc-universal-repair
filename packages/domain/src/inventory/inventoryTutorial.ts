@@ -9,7 +9,9 @@ import { matchesSearch, optionKey, type Item } from "./items.ts";
 // describes its screen (what is open, the items, the search and filters, where each part of the screen is) and the
 // actions "Fazer por mim" takes; the steps here say when each one is done, where to go back when the user leaves
 // one, and what to do for them. The test item is opened from its row, into its details (a click on an item of one
-// brand opens them), and edited from there. The tutorial runs by itself the first time, and again from the user menu.
+// brand opens them), and edited from there. Each part is a tutorial of its own (INVENTORY_TUTORIALS, listed by
+// @apc/domain/tutorials), run alone from the user menu's Tutoriais, each starting where the one before it leaves the test
+// item, or on through the next ones: by itself the first time, from the first part, ending on "Pronto!".
 // The test item has one brand and one vehicle, so its fields are named flat: the item's, its brand's or its vehicle's.
 // On a phone (the web below `card:`, and the app) the steps name what the phone layout shows: the round +, the funnel,
 // the choices in full words and "Ver itens", the filters leaving out the category, whose row the card covers; and as
@@ -21,6 +23,8 @@ const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
   identity: ["code", "name", "category", "partBrand", "vehicleBrand", "vehicleModel"],
   stock: ["quantity", "minQuantity", "position", "side", "color", "location", "price"],
 };
+/** The tutorials the tour is made of, one per part, in order: part 1 is "inventory-add". */
+export const INVENTORY_TUTORIALS = ["inventory-add", "inventory-search", "inventory-edit"] as const;
 /** Names of the tutorial's parts, for the card header. */
 export const INVENTORY_TUTORIAL_PARTS = catalog<readonly string[]>(
   ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"],
@@ -244,6 +248,8 @@ export type TutorialScreen<Target> = {
   deleteItem: (item: Item) => void;
 };
 
+/** One of the tutorials the tour is made of. */
+export type InventoryTutorialId = (typeof INVENTORY_TUTORIALS)[number];
 /** The steps of the tutorial. */
 export type TutorialStepId =
   | "new"
@@ -306,13 +312,39 @@ export function formHas(form: ItemForm, values: Partial<Record<FormField, string
 }
 
 /**
+ * Counts the steps of a part, as the tutorials' list says.
+ * @param part The part, from 1.
+ * @returns How many steps it has, e.g. 4 for part 1.
+ */
+export function inventoryTutorialPartSteps(part: number): number {
+  return Object.values(STEP_TEXTS["pt-BR"]).filter((step) => step.part === part).length;
+}
+
+/**
+ * Lists the parts a run of the tour goes through.
+ * @param id The tutorial it starts with.
+ * @param onward Whether it goes on through the next ones, as the first time.
+ * @returns The parts, from 1, e.g. [2] for "inventory-search" alone, or [1, 2, 3] from "inventory-add" onward.
+ */
+export function inventoryTutorialParts(id: InventoryTutorialId, onward: boolean): number[] {
+  const first = INVENTORY_TUTORIALS.indexOf(id) + 1;
+  return onward ? INVENTORY_TUTORIALS.slice(first - 1).map((_, index) => first + index) : [first];
+}
+
+/**
  * Lists the tutorial's steps for a screen: each with its texts, target, check, the step to go back to and what
  * "Fazer por mim" does. The texts follow the screen's layout as it is when they are listed.
  * @param screen Reads the screen as it is now.
  * @param locale The language of the texts.
+ * @param parts The parts to run, from 1; all of them by default. "Pronto!", which names the whole tour, ends a run of all
+ * of them only.
  * @returns The steps in order.
  */
-export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>, locale: Locale): TutorialStep<Target>[] {
+export function inventoryTutorialSteps<Target>(
+  screen: () => TutorialScreen<Target>,
+  locale: Locale,
+  parts: readonly number[] = INVENTORY_TUTORIALS.map((_, index) => index + 1),
+): TutorialStep<Target>[] {
   /** The test item, while it is in stock. */
   const testItem = () => screen().items.find(isTestItem);
   /** Whether the form is open on the test item, on the edit when `viewing` is false. */
@@ -475,7 +507,12 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     "end",
   ];
   const phone = screen().phone;
-  return order.map((id) => {
+  const whole = parts.length === INVENTORY_TUTORIALS.length;
+  const run = order.filter((id) => {
+    const { part } = STEP_TEXTS[locale][id];
+    return part === undefined ? whole : parts.includes(part);
+  });
+  return run.map((id) => {
     const { lost, ...binding } = bindings[id];
     const texts = { ...STEP_TEXTS[locale][id], ...(phone && PHONE_TEXTS[locale][id]) };
     return { id, ...texts, ...binding, ...(lost && { lost: () => (screen().busy ? null : lost()) }) };
