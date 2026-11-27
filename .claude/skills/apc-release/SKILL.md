@@ -1,11 +1,11 @@
 ---
 name: apc-release
-description: Prepare a new version of APC Universal Repair (desktop app, API and phone app) for release - bump the versions, write the bilingual release notes and open the release PR. Use when the user asks to release, publish, cut or bump a version of APC.
+description: Prepare a new version of APC Universal Repair (desktop app, API and phone app) for release - bump the versions, write the bilingual release notes and open the release PR. Use when the user asks to release, cut or bump a version of APC; to generate and publish one in one go, use apc-publish.
 ---
 
 # Preparing an APC release
 
-README "Desktop App → Publishing a version" is the source of truth. Publishing itself is the user's: never run the Desktop workflow or create a GitHub release yourself.
+README "Desktop App → Publishing a version" is the source of truth. Publishing itself is the user's: never run the Desktop workflow or create a GitHub release yourself, unless the user asks to generate and publish a release, when the apc-publish skill runs these steps and publishes.
 
 ## Steps
 
