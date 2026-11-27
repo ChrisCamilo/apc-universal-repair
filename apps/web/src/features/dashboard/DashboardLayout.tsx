@@ -4,6 +4,7 @@ import type { InventoryLink } from '@apc/domain/catalog'
 import { ICON_SIZES, ICONS, moreIcon } from '@apc/tokens/icons'
 import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts'
 import { perLocale } from '@apc/domain/locale'
+import { TUTORIALS } from '@apc/domain/tutorials'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs'
 import { AppFrame } from '../../components/AppFrame'
 import { HEADER_MARK_SIZE } from '../../components/AppFrame'
@@ -16,7 +17,7 @@ import { WorkInProgress } from '../../components/WorkInProgress'
 import { readStored, writeStored } from '../../app/storage.ts'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext.ts'
+import { TutorialsContext, useTutorialsChoice } from './tutorialsContext.ts'
 import { MoreActionsContext } from './moreActionsContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContext.ts'
@@ -28,8 +29,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // Dashboard reopens on the last tab used. While "Arrastar para reordenar" is on in the user menu, the tabs can be
 // dragged (or moved with Alt + arrows) into a new order, which is saved and comes back on reload, with tabs added
 // later at its end; the open tab stays open. The Dashboard also holds "Itens por página", which the user menu sets
-// and the Inventory tab follows, and the Inventory tutorial's state, which the
-// Inventory tab runs (by itself the first time) and the user menu replays. A tab still being built (`wip` in
+// and the Inventory tab follows, and the tutorials' state: a tutorial the user menu's Tutoriais starts opens its tab,
+// which runs it, as the Inventory tab runs its tour by itself the first time (see tutorialsContext.ts). A tab still being built (`wip` in
 // DASHBOARD_TABS) opens blurred behind a notice saying it isn't ready yet.
 // On a phone (below `card:`) the header gives way to the phone layout (see DashboardLayout.styles.ts): the open tab's
 // header, with the APC mark and the tab's name as the page's heading, over its content, and a bar fixed at the bottom
@@ -75,7 +76,7 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const tab = tabOfPath(pathname)
   const reorder = useReorderChoice()
   const pageSize = usePageSizeChoice()
-  const tutorial = useInventoryTutorialChoice()
+  const tutorials = useTutorialsChoice()
   const [order, setOrder] = useState(() => orderTabs(TAB_IDS, readStored(TAB_ORDER_STORAGE_KEY)))
   const phone = usePhone()
   // What the header's "⋯" opens, as the open tab hands it over; none without a "⋯".
@@ -135,7 +136,16 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   return (
     <TabReorderContext.Provider value={reorder}>
       <PageSizeContext.Provider value={pageSize}>
-        <InventoryTutorialContext.Provider value={tutorial}>
+        <TutorialsContext.Provider
+          value={{
+            ...tutorials,
+            // A tutorial runs on its feature's tab.
+            start: (id, onward) => {
+              navigate(`/${TUTORIALS.find((tutorial) => tutorial.id === id)!.feature}`)
+              tutorials.start(id, onward)
+            },
+          }}
+        >
           <MoreActionsContext.Provider value={handMore}>
             <PhoneHeaderContext.Provider value={setHeader}>
               <InventoryLinkContext.Provider value={links}>
@@ -151,7 +161,7 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
               </InventoryLinkContext.Provider>
             </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>
-        </InventoryTutorialContext.Provider>
+        </TutorialsContext.Provider>
       </PageSizeContext.Provider>
     </TabReorderContext.Provider>
   )

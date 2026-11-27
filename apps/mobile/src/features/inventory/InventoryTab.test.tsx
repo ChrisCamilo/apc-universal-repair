@@ -19,7 +19,7 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens'
 import { itemListsOf } from '@apc/domain/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { AUTO_SYNC_MS, InventoryTab } from './InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from './tutorial/inventoryTutorialContext';
+import { TutorialsContext, useTutorialsChoice } from '../dashboard/tutorialsContext';
 import { MoreActionsContext } from '../dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../../app/theme';
 import { InventoryCopyProvider } from '../sync/useInventoryCopy';
@@ -313,7 +313,7 @@ test('Mobile: a card of one brand opens the item details', async () => {
 
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
-    <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
+    <TutorialsContext.Provider value={useTutorialsChoice(true, () => {})}>{children}</TutorialsContext.Provider>
   );
 }
 

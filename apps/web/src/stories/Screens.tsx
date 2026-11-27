@@ -249,7 +249,7 @@ function UserMenu() {
       </Switch>
       <MenuLabel>Estoque</MenuLabel>
       <MenuItem icon={documentIcon} description="Criar, procurar, editar e excluir um item de teste" onSelect={() => {}}>
-        Tutorial do estoque
+        Tutoriais
       </MenuItem>
     </Menu>
   )

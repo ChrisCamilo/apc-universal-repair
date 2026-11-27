@@ -24,17 +24,19 @@ import { WEB_TEXTS } from '../../app/webTexts.ts'
 import { AboutDialog } from './AboutDialog.tsx'
 import { BottomBarItem } from './BottomBarItem.tsx'
 import { bottomBar } from './DashboardLayout.styles.ts'
-import { useInventoryTutorial } from '../inventory/tutorial/inventoryTutorialContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
+import { TutorialsDialog } from './TutorialsDialog.tsx'
+import { useTutorials } from './tutorialsContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
 // which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the same way;
 // "Arrastar para reordenar" goes through the Dashboard (TabReorderContext), which saves it and makes the tabs reorderable
 // while it is on; "Itens por página" sets how many items the Inventory
-// list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
-// with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
+// list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row.
+// "Tutoriais", with a play icon, opens the tutorials by feature, where pressing one goes to its tab and starts it (see
+// TutorialsDialog.tsx). In the desktop app, "Servidor e banco de
 // dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx), and "Dispositivos", with a lock, the devices
 // authorized to log in (see DevicesDialog.tsx); the web app's demo shows "Dispositivos" too, which says it isn't there.
 // Set apart from the preferences, at the end: "Sobre esta versão", with an info icon, opens the version in use and its
@@ -57,9 +59,10 @@ export function UserMenu() {
   const texts = DASHBOARD_TEXTS[locale]
   const { reorderable, setReorderable } = useTabReorder()
   const { pageSize, setPageSize } = usePageSize()
-  const tutorial = useInventoryTutorial()
+  const tutorials = useTutorials()
   const openServerSettings = useOpenServerSettings()
   const [about, setAbout] = useState(false)
+  const [guides, setGuides] = useState(false)
   const [devices, setDevices] = useState(false)
   const [sheet, setSheet] = useState(false)
   const phone = usePhone()
@@ -96,14 +99,8 @@ export function UserMenu() {
           onValueChange={(size) => setPageSize(Number(size))}
         />
       )}
-      <MenuItem
-        icon={playIcon}
-        onSelect={() => {
-          navigate('/inventory')
-          tutorial.replay()
-        }}
-      >
-        {texts.inventoryTutorial}
+      <MenuItem icon={playIcon} onSelect={() => setGuides(true)}>
+        {texts.tutorials}
       </MenuItem>
       {(desktopBridge()?.server || import.meta.env.VITE_DEMO) && (
         <>
@@ -153,6 +150,14 @@ export function UserMenu() {
           {items}
         </Menu>
       )}
+      <TutorialsDialog
+        open={guides}
+        onClose={() => setGuides(false)}
+        onStart={(id) => {
+          setGuides(false)
+          tutorials.start(id)
+        }}
+      />
       <AboutDialog open={about} onClose={() => setAbout(false)} version={RELEASE_VERSION} notes={RELEASE_NOTES} />
       <DevicesDialog open={devices} onClose={() => setDevices(false)} />
     </>

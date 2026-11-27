@@ -17,7 +17,8 @@ import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';
 import { useToast } from '../../components/Toast';
 import { hasScreenLock, loadQueue, openLockSettings } from '../sync/inventoryCopy';
-import { useInventoryTutorial } from '../inventory/tutorial/inventoryTutorialContext';
+import { TutorialsDialog } from './TutorialsDialog';
+import { useTutorials } from './tutorialsContext';
 import { lastSync, syncBadge, syncOutcome } from '../sync/syncStatus';
 import { useInventoryCopy } from '../sync/useInventoryCopy';
 import { useTabReorder } from './tabReorderContext';
@@ -57,10 +58,11 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const texts = DASHBOARD_TEXTS[locale];
   const phone = PHONE_TEXTS[locale].userMenu;
   const { reorderable, setReorderable } = useTabReorder();
-  const tutorial = useInventoryTutorial();
+  const tutorials = useTutorials();
   const copy = useInventoryCopy();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const [guides, setGuides] = useState(false);
   // Whether the phone has a screen lock, read each time the menu opens, as it may have been set meanwhile.
   const [locked, setLocked] = useState(true);
   const bar = useBarStyles();
@@ -112,8 +114,8 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
               {texts.reorder}
             </Switch>
             <MenuLabel>{texts.inventory}</MenuLabel>
-            <MenuItem icon={playIcon} onSelect={tutorial.replay}>
-              {texts.inventoryTutorial}
+            <MenuItem icon={playIcon} onSelect={() => setGuides(true)}>
+              {texts.tutorials}
             </MenuItem>
             <MenuLabel>{phone.sync}</MenuLabel>
             <MenuItem description={[lastSync(copy.syncedAt, locale), syncBadge(copy, locale)].filter(Boolean).join(' · ')} onSelect={syncNow}>
@@ -134,6 +136,14 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
           </MenuContext.Provider>
         </View>
       </BottomSheet>
+      <TutorialsDialog
+        open={guides}
+        onClose={() => setGuides(false)}
+        onStart={(id) => {
+          setGuides(false);
+          tutorials.start(id);
+        }}
+      />
     </>
   );
 }
