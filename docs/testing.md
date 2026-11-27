@@ -271,6 +271,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | the tour of a brand's photos from Tutoriais: two photos added, the first taken out and the second saved, by hand and with Fazer por mim, and skipped; the test item deleted at the end | `inventory-photos-tutorial` | both |  |
 |  | the tour of importing a CSV from Tutoriais: the template downloaded, the sample file of two test items read, imported and shown, by hand and with Fazer por mim, and skipped; the test items deleted at the end | `inventory-import-tutorial` | both |  |
 |  | the tour of the lists from Tutoriais: two test categories added, the first renamed, joined into the second and the second deleted, by hand and with Fazer por mim, and skipped; the other categories left as they were | `inventory-lists-tutorial` | both |  |
+|  | the tour of a model's tree in the Catalog from Tutoriais: a test model built down to an engine with its sheet, a second version moved up, by hand on the desktop's tree and a phone's sheets and with Fazer por mim, and skipped; the test model taken out of the catalog | `catalog-tree-tutorial` | both |  |
 | Demo | the demo's find, filter, add, edit, delete | `demo` | both | `@demo` |
 
 #### Catalog (`@catalog`)
@@ -730,6 +731,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | o tour das fotos de uma marca pelo Tutoriais: duas fotos adicionadas, a primeira tirada e a segunda salva, à mão e com Fazer por mim, e pulado; o item de teste excluído no fim | `inventory-photos-tutorial` | ambos |  |
 |  | o tour da importação de um CSV pelo Tutoriais: o modelo baixado, o arquivo de exemplo com duas peças de teste lido, importado e mostrado, à mão e com Fazer por mim, e pulado; as peças de teste excluídas no fim | `inventory-import-tutorial` | ambos |  |
 |  | o tour das listas pelo Tutoriais: duas categorias de teste criadas, a primeira renomeada, juntada à segunda e a segunda excluída, à mão e com Fazer por mim, e pulado; as outras categorias como estavam | `inventory-lists-tutorial` | ambos |  |
+|  | o tour da árvore de um modelo no Catálogo pelo Tutoriais: um modelo de teste montado até um motor com a ficha, uma segunda versão movida para cima, à mão na árvore do desktop e nas folhas do celular e com Fazer por mim, e pulado; o modelo de teste tirado do catálogo | `catalog-tree-tutorial` | ambos |  |
 | Demo | buscar, filtrar, cadastrar, editar, excluir na demo | `demo` | ambos | `@demo` |
 
 #### Catálogo (`@catalog`)
