@@ -74,6 +74,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔀 A brand or model of the Catalog merged into another in the lists, taking its place and tree along: a brand's models join the other's, and twin models, generations, versions and years join into one, with nothing lost ✅
 - 🔎 "Só com peças" in the Catalog, showing only the models some part in stock fits and their brands, remembered on each device ✅
 - 🛒 *Exportar Peças* for Mercado Livre: a zip with one listing per part brand in Mercado Livre's words, ready to copy into the spreadsheet of its *Anunciador em massa*, and the photos named after their codes for its *Gestor de fotos* (the phone shares the listings' CSV alone) ✅
+- 🌐 Portuguese and English in every app, the web, the desktop app with its installer and the phone, chosen under *Idioma* in the user menu and kept on each device; the apps start in Portuguese ✅
 - 🔃 The Inventory refreshing by itself when another device changes it
 
 **Offline Mode (planned)**
@@ -344,6 +345,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔀 Uma marca ou modelo do Catálogo juntado a outro nas listas, levando o lugar e a árvore junto: os modelos de uma marca se juntam aos da outra, e modelos, gerações, versões e anos gêmeos viram um só, sem perder nada ✅
 - 🔎 "Só com peças" no Catálogo, que mostra só os modelos em que alguma peça do estoque serve e as marcas deles, e que cada aparelho lembra ✅
 - 🛒 *Exportar Peças* para o Mercado Livre: um zip com um anúncio por marca de peça nas palavras do Mercado Livre, pronto para copiar na planilha do *Anunciador em massa*, e as fotos nomeadas pelo código para o *Gestor de fotos* (o celular compartilha só o CSV dos anúncios) ✅
+- 🌐 Português e inglês em todos os apps, a web, o app desktop com o instalador e o celular, escolhidos em *Idioma* no menu do usuário e guardados em cada aparelho; os apps começam em português ✅
 - 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
 
 **Modo offline (planejado)**

@@ -213,7 +213,9 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 | User menu | dark mode and style, kept after a reload | `user-menu` | both | `@theme` |
 |  | Sair ends the session, keeps the preferences | `user-menu` | both |  |
 |  | reordering the tabs by dragging | `user-menu` | both |  |
+|  | Idioma: the whole session in English and back, kept after a reload | `user-menu` | both |  |
 |  | Sobre esta versão: the version and its notes | `desktop/bundled` | Electron | `@bundled` |
+|  | with English chosen, About this version shows the English notes | `desktop/bundled` | Electron | `@bundled` |
 | Theme | each style and mode's colors and display font | `theme` | both | `@theme` |
 
 #### Inventory (`@inventory`)
@@ -337,6 +339,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 8. Split a test with more than one idea, or longer than about 30 lines, into `test.step`s titled in English after what each checks (`await test.step("the copy keeps the photos", async () => { … })`). A failure's report and trace then name the step it broke in, not only a list of actions. The comment above the test keeps the why, in up to 3 lines. A flow in `./locators/` runs as a boxed step (`test.step(title, body, { box: true })`), so a failure inside `logIn()` or `fillItem()` points at the test's line, not into the locator file.
 9. Look the screen or flow up in the [coverage map](#coverage-map) first: a behavior another test checks is left to it. Then add the test's row, and update the rows of a test you remove or whose checks move.
+10. Write it in Portuguese, the apps' first language. Each screen keeps one test in English, with `test.use({ language: "en-US" })` and the locators in the same language, so a text left out of the catalogs shows up there.
 
 ### Writing tests with Playwright's agents
 
@@ -665,7 +668,9 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 | Menu do usuário | modo escuro e estilo, mantidos após recarregar | `user-menu` | ambos | `@theme` |
 |  | Sair encerra a sessão, mantém as preferências | `user-menu` | ambos |  |
 |  | reordenar as abas arrastando | `user-menu` | ambos |  |
+|  | Idioma: a sessão inteira em inglês e de volta, mantida após recarregar | `user-menu` | ambos |  |
 |  | Sobre esta versão: a versão e as notas | `desktop/bundled` | Electron | `@bundled` |
+|  | com o inglês escolhido, About this version mostra as notas em inglês | `desktop/bundled` | Electron | `@bundled` |
 | Tema | as cores e a fonte de cada estilo e modo | `theme` | ambos | `@theme` |
 
 #### Estoque (`@inventory`)
@@ -788,6 +793,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 8. Divida um teste com mais de uma ideia, ou com mais de umas 30 linhas, em `test.step`s com títulos em inglês, cada um dizendo o que confere (`await test.step("the copy keeps the photos", async () => { … })`). O relatório e o trace de uma falha mostram então o passo em que ela quebrou, não só uma lista de ações. O comentário acima do teste guarda o porquê, em até 3 linhas. Um fluxo em `./locators/` roda como um passo encaixotado (`test.step(título, corpo, { box: true })`), então uma falha dentro de `logIn()` ou `fillItem()` aponta para a linha do teste, não para dentro do arquivo de locators.
 9. Procure a tela ou o fluxo no [mapa de cobertura](#mapa-de-cobertura) antes: um comportamento que outro teste confere fica com ele. Depois acrescente a linha do teste, e atualize as linhas de um teste que você remove ou cujas conferências mudam de lugar.
+10. Escreva-o em português, o primeiro idioma dos apps. Cada tela mantém um teste em inglês, com `test.use({ language: "en-US" })` e os locators no mesmo idioma, para um texto que ficou fora dos catálogos aparecer ali.
 
 ### Escrevendo testes com os agentes do Playwright
 
