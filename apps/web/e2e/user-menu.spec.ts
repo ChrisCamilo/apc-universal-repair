@@ -2,6 +2,9 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { logIn, loginForm } from "./locators/auth.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
+import { inventory } from "./locators/inventory.ts";
+import { DASHBOARD_TEXTS } from "@apc/domain/app-texts";
+import { LOCALE_STORAGE_KEY } from "@apc/domain/locale";
 import { initials, SESSION_STORAGE_KEY } from "@apc/domain/auth";
 import { THEME_STORAGE_KEYS } from "@apc/tokens/theme";
 import { TEST_USERS } from "@apc/domain/test-users";
@@ -77,4 +80,36 @@ test("Web: the reorder choice makes the tabs draggable and comes back", { tag: [
   await trigger.click();
   await checkbox(/Arrastar para reordenar/).click();
   await expect(tab).not.toHaveAttribute("draggable");
+});
+
+// Picks English under "Idioma" and checks the whole session follows: the page is marked English, and the menu, the
+// tabs, the Inventory and the Catalog it opens read in English; a reload keeps it. Picking Português brings it all
+// back, saved too.
+test("Web: the language switch changes the whole session to English and back", { tag: [TEST_TAGS.dashboard] }, async ({ page }) => {
+  const html = page.locator("html");
+  const saved = () => page.evaluate((key) => localStorage.getItem(key), LOCALE_STORAGE_KEY);
+  await page.goto("/inventory");
+  await expect(html).toHaveAttribute("lang", "pt-BR");
+  await userMenu(page).trigger.click();
+  await userMenu(page).radio("English").click();
+  await expect(html).toHaveAttribute("lang", "en-US");
+  await expect(userMenu(page, "en-US").item(DASHBOARD_TEXTS["en-US"].logOut)).toBeVisible();
+  await page.keyboard.press("Escape");
+  const english = dashboard(page, "en-US");
+  await expect(inventory(page, "en-US").search).toBeVisible();
+  await english.tab("catalog").click();
+  await expect(english.panel("catalog")).toBeVisible();
+
+  await page.reload();
+  await expect(html).toHaveAttribute("lang", "en-US");
+  await expect(english.tab("catalog")).toBeVisible();
+  expect(await saved()).toBe("en-US");
+
+  await userMenu(page, "en-US").trigger.click();
+  await userMenu(page).radio("Português").click();
+  await expect(html).toHaveAttribute("lang", "pt-BR");
+  await expect(userMenu(page).item(DASHBOARD_TEXTS["pt-BR"].logOut)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dashboard(page).panel("catalog")).toBeVisible();
+  expect(await saved()).toBe("pt-BR");
 });

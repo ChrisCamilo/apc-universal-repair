@@ -113,7 +113,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-08 | `diagnostics` | Diagnostic guidance for common issues |
 | EP-09 | `pricing` | Reference price data & display |
 | EP-10 | `backend` | Real authentication + real data persistence, replacing MVP mocks |
-| EP-11 | `i18n` | EN/PT-BR parity across the app UI (beyond the README) |
+| EP-11 | `i18n` | Portuguese and English in every app: the web, desktop and phone screens from shared catalogs, the API's refusals by reason, the desktop's own windows and installer, the *Idioma* switch in the user menu, and a lint guard against Portuguese text written in a component |
 | EP-17 | `offline` | The phone keeps a copy of the paired server's inventory, works on it away from the server, and syncs both ways when it is back; its password login comes back to open the copy offline |
 
 ### TBD epics (not scheduled yet)
@@ -177,6 +177,7 @@ How the suites are laid out, how to run them, where their reports and traces are
 These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `node:test`).
 
 - **Each test has a short description** in a comment right above it: what it checks and why, up to 3 lines (5 or more only when it really needs it).
+- **Tests read the screens in Portuguese,** the apps' first language, and each screen has one test in English, which reads its texts from the same catalogs (`useLocale` in a component test, `test.use({ language: "en-US" })` in the web E2E).
 - **Tests run with reduced motion,** so overlays open and close at once and a test reads the screen as it ends up, never halfway through a transition: the web component tests (`test-setup.ts`), the web end-to-end tests (`reducedMotion` in `playwright.config.ts`), the desktop smoke tests (`e2e/reducedMotion.ts`) and the phone's tests (`jest.setup.js`). A test about a motion turns it on for itself: on web with `commands.reduceMotion(false)` (the overlays' tests through `test-motion.ts`, which slows the motion and ends it when the test says), on mobile by spying on `AccessibilityInfo.isReduceMotionEnabled` and standing in for `Animated.timing`.
 - **Each test title starts with where the test lives,** followed by a colon and the behavior in English:
 
@@ -418,6 +419,7 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
   - a style id written by hand (`data-testid="…"`, `testID="…"`) instead of the recipe's `ids`;
   - on web, classes written in the JSX (`className="…"`, or a string inside the className's expression; a recipe's variant argument, `classes.nav({ side: 'prev' })`, is fine), a `style={{…}}` object, or an HTML element with classes but no `data-testid`;
   - on mobile, a `style={{…}}` object, or a React Native element (anything imported from a `react-native…` package) with a style but no `testID`.
+- **`lint:texts`** (`@apc/web` and `@apc/mobile`): the guard in `packages/domain/src/platform/locale/textGuard.ts` reads the same component files, but for the web's Storybook screens in `src/stories/`, and lists each text that looks Portuguese (a Portuguese letter or word) written in one instead of taken from a catalog. It can't know every word, so review still looks for loose text.
 - **`react-native/no-inline-styles`** is an error in the mobile ESLint, tests included.
 - A design-system component styled by a slot (`<Panel className={classes.rail()}>`) needs no id: it keeps its own.
 
