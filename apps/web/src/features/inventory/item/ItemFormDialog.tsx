@@ -149,8 +149,8 @@ type ItemFormDialogProps = {
   initialPhotos?: UploadPhoto[][]
   /** Offers Duplicar in the details, called with the item and whether the copy takes the photos too. */
   onDuplicate?: (item: Item, withPhotos: boolean) => void
-  /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
-  onFormChange?: (form: ItemForm, viewing: boolean) => void
+  /** Called with the form as typed, whether it shows the details and each brand's photos, on each change, e.g. for the tutorial. */
+  onFormChange?: (form: ItemForm, viewing: boolean, photos: readonly UploadPhoto[][]) => void
   /** Offers Excluir in a phone's details, called with the item; the owner asks to confirm. */
   onDelete?: (item: Item) => void
 }
@@ -215,8 +215,8 @@ export function ItemFormDialog({
 
   // Tell the owner what the form holds as it changes.
   useEffect(() => {
-    onFormChange?.(form, viewing)
-  }, [form, viewing, onFormChange])
+    onFormChange?.(form, viewing, photos)
+  }, [form, viewing, photos, onFormChange])
 
   // Opened on a brand, the details show its section first, once the window is open.
   useEffect(() => {
@@ -718,7 +718,7 @@ export function ItemFormDialog({
                         <RowAction icon={trashIcon} label={texts.form.removeNamed(names.section)} tone="danger" onClick={() => removeBrand(index)} />
                       )}
                     </div>
-                    <div className={classes.photos()} data-testid={ids.photos}>
+                    <div className={classes.photos()} data-testid={ids.photos} data-tour={index === 0 ? 'form-photos' : undefined}>
                       <ImageUpload
                         label={names.photos}
                         photos={photos[index] ?? []}

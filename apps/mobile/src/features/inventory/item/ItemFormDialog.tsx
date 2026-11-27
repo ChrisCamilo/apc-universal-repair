@@ -129,7 +129,7 @@ type ItemFormDialogProps = {
   /** Offers Duplicar in the details, called with the item and whether the copy takes the photos too. */
   onDuplicate?: (item: Item, withPhotos: boolean) => void;
   /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
-  onFormChange?: (form: ItemForm, viewing: boolean) => void;
+  onFormChange?: (form: ItemForm, viewing: boolean, photos: readonly UploadPhoto[][]) => void;
   /** Offers Excluir in the details, which asks to confirm and deletes the item; called with it once it is gone. */
   onDeleted?: (item: Item) => void;
   /** Called as Excluir's confirmation opens and closes, e.g. for the tutorial. */
@@ -194,8 +194,8 @@ export function ItemFormDialog({
 
   // Tell the owner what the form holds as it changes.
   useEffect(() => {
-    onFormChange?.(form, viewing);
-  }, [form, viewing, onFormChange]);
+    onFormChange?.(form, viewing, photos);
+  }, [form, viewing, photos, onFormChange]);
 
   // Tell the owner whether Excluir's confirmation is open.
   useEffect(() => {
@@ -490,14 +490,17 @@ export function ItemFormDialog({
                       </Button>
                     )}
                   </View>
-                  <ImageUpload
-                    label={names.photos}
-                    photos={photos[index] ?? []}
-                    onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
-                    limit={ITEM_PHOTO_LIMIT}
-                    onPick={pickPhotos}
-                    onTake={takePhoto}
-                  />
+                  <View ref={index === 0 ? tourTarget('form-photos') : undefined} collapsable={false}>
+                    <ImageUpload
+                      label={names.photos}
+                      photos={photos[index] ?? []}
+                      onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
+                      limit={ITEM_PHOTO_LIMIT}
+                      onPick={pickPhotos}
+                      onTake={takePhoto}
+                      tour={index === 0 ? 'photo-remove' : undefined}
+                    />
+                  </View>
                   {(photos[index]?.length ?? 0) < ITEM_PHOTO_LIMIT && (
                     <View style={styles.pickPhotos} testID={ids.pickPhotos}>
                       <Button

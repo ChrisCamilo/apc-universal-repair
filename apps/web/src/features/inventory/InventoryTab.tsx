@@ -48,6 +48,7 @@ import {
 } from '@apc/domain/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form'
 import { inventoryTutorialParts, TUTORIAL_CODE, TUTORIAL_ITEM, type TutorialScreen } from '@apc/domain/inventory-tutorial'
+import { PHOTOS_TUTORIAL, type PhotosTutorialScreen } from '@apc/domain/photos-tutorial'
 import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
 import { perLocale, type Locale } from '@apc/domain/locale'
@@ -98,6 +99,8 @@ import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { useMoreActions } from '../dashboard/moreActionsContext.ts'
 import { usePageSize } from '../dashboard/pageSizeContext.ts'
 import { tutorialTarget } from './tutorial/tutorialTarget.ts'
+import { PhotosTutorial } from './tutorial/PhotosTutorial.tsx'
+import { samplePhotos } from './tutorial/samplePhotos.ts'
 
 // The Inventory tab (/inventory), the default tab: the items in the DataTable, a search by name or part code, the
 // filters and a counter of the items shown, the total and the stock alerts. The Filtros menu narrows the list by
@@ -313,9 +316,12 @@ export function InventoryTab() {
     open: false,
     session: 0,
   })
-  // The form as typed, and whether it shows the details, which the tutorial's steps read.
-  const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean }>()
-  const followForm = useCallback((values: ItemForm, viewing: boolean) => setTyped({ values, viewing }), [])
+  // The form as typed, whether it shows the details and each brand's photos, which the tutorials' steps read.
+  const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean; photos: readonly UploadPhoto[][] }>()
+  const followForm = useCallback(
+    (values: ItemForm, viewing: boolean, photos: readonly UploadPhoto[][]) => setTyped({ values, viewing, photos }),
+    [],
+  )
   // Whether the Filtros menu (a phone's filter sheet) is open, and a phone's sort sheet.
   const [filtering, setFiltering] = useState(false)
   const [sorting, setSorting] = useState(false)
@@ -324,6 +330,8 @@ export function InventoryTab() {
   // last sent a change: until the list loads again, the change is still on its way, and the tour doesn't take it as
   // left undone.
   const [tour, setTour] = useState<number[] | null>(null)
+  // Whether the photos tour runs.
+  const [photosTour, setPhotosTour] = useState(false)
   const [sentWith, setSentWith] = useState<Item[]>()
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
@@ -380,7 +388,8 @@ export function InventoryTab() {
       sorting ||
       removing !== undefined ||
       viewer !== undefined ||
-      tour !== null,
+      tour !== null ||
+      photosTour,
   )
 
   /**
@@ -509,10 +518,14 @@ export function InventoryTab() {
   }, [phone, handMore])
 
   // Run the tour by itself the first time, from its first part on, once the items are in, and a tutorial of its when
-  // one is asked for.
+  // one is asked for: a part of the tour, or the photos tour.
   const { asked } = tutorial
-  if (!tour && ((!tutorial.seen && state.status === 'ready') || asked)) {
-    setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true))
+  if (!tour && !photosTour && ((!tutorial.seen && state.status === 'ready') || asked)) {
+    if (asked?.id === PHOTOS_TUTORIAL) {
+      setPhotosTour(true)
+    } else {
+      setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true))
+    }
     clearForTutorial()
   }
 
@@ -528,6 +541,17 @@ export function InventoryTab() {
       tutorialStarted()
     }
   }, [tour])
+
+  // The photos tour starts on the test item, made anew.
+  const photosStarted = useEffectEvent(() => {
+    tutorial.started()
+    void readyTestItem(true)
+  })
+  useEffect(() => {
+    if (photosTour) {
+      photosStarted()
+    }
+  }, [photosTour])
 
   // Another tab's link: the filters it sets, with the search and the stock status off, or an item's details once the
   // items are in; then it is let go.
@@ -585,6 +609,31 @@ export function InventoryTab() {
       // Asked from its details, on a phone: they go with it.
       setForm((current) => ({ ...current, open: false }))
       void send(`${API_BASE}/items/${item.id}`, 'DELETE')
+    },
+  }
+  // The photos of the form's first brand, as it holds them: as last reported, or as it opened.
+  const formPhotos = typed?.photos[0] ?? form.photos?.[0] ?? heldPhotos(form.item?.brands[0]?.photos ?? [], API_BASE)
+  /** Opens the edit of the test item with its first brand's photos given. */
+  const editPhotos = (photos: UploadPhoto[]) => {
+    if (testItem) {
+      openForm(testItem, false, typed?.values, [photos])
+    }
+  }
+  const photosScreen: Omit<PhotosTutorialScreen<Element>, 'target'> = {
+    form: form.open ? { item: form.item, viewing: typed?.viewing ?? Boolean(form.details), photos: formPhotos.length } : null,
+    items,
+    busy: sentWith === items,
+    phone,
+    openForm: (item, details) => openForm(item, details),
+    addSamplePhotos: () => void samplePhotos().then((samples) => editPhotos([...formPhotos, ...samples].slice(0, ITEM_PHOTO_LIMIT))),
+    removeFirstPhoto: () => editPhotos(formPhotos.slice(1)),
+    savePhotos: () => {
+      if (!testItem) {
+        return
+      }
+      setForm((current) => ({ ...current, open: false }))
+      setSentWith(items)
+      void savePhotos(testItem, testItem.brands[0], formPhotos).then(reload)
     },
   }
 
@@ -940,6 +989,17 @@ export function InventoryTab() {
           void deleteTestItem()
         }}
         screen={screen}
+      />
+      <PhotosTutorial
+        open={photosTour}
+        onClose={() => {
+          setPhotosTour(false)
+          clearForTutorial()
+          void deleteTestItem()
+        }}
+        screen={photosScreen}
+        code={TUTORIAL_CODE}
+        itemName={testItem?.name}
       />
       <ImageViewer
         open={viewer !== undefined}
