@@ -1,4 +1,5 @@
 import { INVENTORY_TUTORIAL_PARTS, INVENTORY_TUTORIALS, inventoryTutorialPartSteps, type InventoryTutorialId } from "../inventory/inventoryTutorial.ts";
+import { IMPORT_TUTORIAL, importTutorialStepCount, importTutorialTitle } from "../inventory/importTutorial.ts";
 import { PHOTOS_TUTORIAL, photosTutorialStepCount, photosTutorialTitle } from "../inventory/photosTutorial.ts";
 import { DASHBOARD_TEXTS } from "../platform/locale/appTexts.ts";
 import { catalog, type Locale } from "../platform/locale/locale.ts";
@@ -7,7 +8,7 @@ import { catalog, type Locale } from "../platform/locale/locale.ts";
 // in and its texts. A guided tour is done on the screen, step by step, or with "Fazer por mim"; an explanation only
 // points at the screen and explains, one to three steps with Next. A tutorial on a tab's feature opens the tab before
 // it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts), and a brand's photos
-// have a guided tour of their own (see photosTutorial.ts); an explanation's
+// and importing a CSV have guided tours of their own (see photosTutorial.ts and importTutorial.ts); an explanation's
 // steps point at the parts of the screen its targets name, which each app finds its own way (data-tour on the web, a
 // tourTarget ref on the phone), the card sitting in the middle of the screen for a step with no target or one not on
 // screen.
@@ -21,7 +22,6 @@ export const TUTORIAL_PLATFORMS = ["web", "desktop", "phone"] as const;
  */
 export const EXPLANATIONS = [
   { id: "inventory-lists", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
-  { id: "inventory-import", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-mercado-livre", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-low-stock", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["status", "items"] },
   { id: "catalog-browse", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-brands", "catalog-search"] },
@@ -38,7 +38,7 @@ export const EXPLANATIONS = [
 /** An explanation, as the Dashboard runs it. */
 export type ExplanationId = (typeof EXPLANATIONS)[number]["id"];
 /** A guided tour, which its tab runs. */
-export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL;
+export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL | typeof IMPORT_TUTORIAL;
 /** A tutorial, as its tab or the Dashboard knows it. */
 export type TutorialId = TourId | ExplanationId;
 /** What a tutorial is about, which the dialog groups it under: a tab, or a part of the apps beside the tabs. */
@@ -81,6 +81,7 @@ export const TUTORIALS: readonly Tutorial[] = [
     steps: inventoryTutorialPartSteps(index + 1),
   })),
   { id: PHOTOS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: photosTutorialStepCount() },
+  { id: IMPORT_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: importTutorialStepCount() },
   ...EXPLANATIONS.map(({ id, feature, platforms, targets }): Tutorial => ({
     id,
     feature,
@@ -110,7 +111,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-edit": "Edite a peça de teste até ela ficar baixa e esgotada, e depois exclua.",
       "inventory-photos": "Adicione duas fotos à peça de teste, deixe a segunda como capa e salve.",
       "inventory-lists": "Renomeie e junte categorias, marcas de peça e modelos de veículo.",
-      "inventory-import": "Cadastre muitas peças de uma vez a partir de uma planilha.",
+      "inventory-import": "Importe um arquivo de exemplo com duas peças de teste, conferindo a prévia antes.",
       "inventory-mercado-livre": "Gere os anúncios das peças para o Anunciador em massa.",
       "inventory-low-stock": "Como o estoque mostra as peças que estão acabando.",
       "catalog-browse": "Passe de uma marca para os modelos dela e procure no Catálogo.",
@@ -134,19 +135,6 @@ export const TUTORIAL_TEXTS = catalog(
           {
             title: "Renomear e juntar",
             text: "Renomeie um nome, e os itens passam a usar o novo. Juntar une dois nomes num só, levando os itens junto. Excluir só vale para um nome que nenhum item usa.",
-          },
-        ],
-      },
-      "inventory-import": {
-        title: "Importar um CSV",
-        steps: [
-          {
-            title: "Importar Peças",
-            text: "Em Mais ações, Importar Peças recebe um arquivo CSV, com uma linha por marca de peça e as marcas de um item juntas pela coluna item.",
-          },
-          {
-            title: "Conferir antes",
-            text: "Antes de importar, a lista mostra quantas linhas estão prontas e quais têm erro, e por quê. Exportar Peças gera um arquivo no mesmo formato, bom de usar como modelo.",
           },
         ],
       },
@@ -279,7 +267,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-edit": "Edit the test part until it is low and out of stock, then delete it.",
       "inventory-photos": "Add two photos to the test part, make the second the cover and save.",
       "inventory-lists": "Rename and join categories, part brands and vehicle models.",
-      "inventory-import": "Add many parts at once from a spreadsheet.",
+      "inventory-import": "Import a sample file of two test parts, checking the preview first.",
       "inventory-mercado-livre": "Make the parts' listings for the Bulk lister.",
       "inventory-low-stock": "How the inventory shows the parts running out.",
       "catalog-browse": "Go from a brand to its models and search the Catalog.",
@@ -303,19 +291,6 @@ export const TUTORIAL_TEXTS = catalog(
           {
             title: "Rename and join",
             text: "Rename a name, and the items use the new one. Join turns two names into one, taking their items along. Delete only works for a name no item uses.",
-          },
-        ],
-      },
-      "inventory-import": {
-        title: "Importing a CSV",
-        steps: [
-          {
-            title: "Import parts",
-            text: "In More actions, Import parts takes a CSV file, with a row per part brand and an item's brands kept together by the item column.",
-          },
-          {
-            title: "Check first",
-            text: "Before importing, the list shows how many rows are ready and which have errors, and why. Export parts makes a file in the same format, handy as a template.",
           },
         ],
       },
@@ -484,5 +459,8 @@ export function tutorialTitle(id: TutorialId, locale: Locale): string {
   if (isExplanation(id)) {
     return TUTORIAL_TEXTS[locale].explanations[id].title;
   }
-  return id === PHOTOS_TUTORIAL ? photosTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
+  if (id === PHOTOS_TUTORIAL) {
+    return photosTutorialTitle(locale);
+  }
+  return id === IMPORT_TUTORIAL ? importTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
 }

@@ -14,25 +14,26 @@ function idsOf(platform: (typeof TUTORIAL_PLATFORMS)[number], feature: string): 
 }
 
 // Lists the dialog's sections in each app, and checks the Inventory's three tutorials come first in all of them, in
-// order, as guided tours, each with its part's steps, and are named after the tour's parts, then the tour of a brand's
-// photos.
+// order, as guided tours, each with its part's steps, and are named after the tour's parts, then the tours of a brand's
+// photos and of importing a CSV.
 test("Shared: the tutorials list the Inventory tour's three parts in every app", () => {
   for (const platform of TUTORIAL_PLATFORMS) {
     const [inventory] = tutorialSections(platform, "pt-BR");
     assert.equal(inventory.title, "Estoque");
     assert.deepEqual(
-      inventory.tutorials.slice(0, 4).map(({ id, kind, steps }) => [id, kind, steps]),
+      inventory.tutorials.slice(0, 5).map(({ id, kind, steps }) => [id, kind, steps]),
       [
         ["inventory-add", "tour", 4],
         ["inventory-search", "tour", 4],
         ["inventory-edit", "tour", 10],
         ["inventory-photos", "tour", 6],
+        ["inventory-import", "tour", 7],
       ],
     );
   }
   assert.deepEqual(
-    TUTORIALS.slice(0, 4).map(({ id }) => tutorialTitle(id, "pt-BR")),
-    ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir", "Fotos de uma marca"],
+    TUTORIALS.slice(0, 5).map(({ id }) => tutorialTitle(id, "pt-BR")),
+    ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir", "Fotos de uma marca", "Importar um CSV"],
   );
   assert.deepEqual(tutorialSections("phone", "en-US")[0].title, "Inventory");
 });
@@ -52,7 +53,7 @@ test("Shared: each feature explains itself, the server on the desktop and the of
     tutorialSections("web", "en-US").map(({ title }) => title),
     ["Inventory", "Catalog", "Notifications"],
   );
-  assert.deepEqual(idsOf("web", "inventory").slice(4), ["inventory-lists", "inventory-import", "inventory-mercado-livre", "inventory-low-stock"]);
+  assert.deepEqual(idsOf("web", "inventory").slice(5), ["inventory-lists", "inventory-mercado-livre", "inventory-low-stock"]);
   assert.deepEqual(idsOf("phone", "catalog"), ["catalog-browse", "catalog-tree", "catalog-sheet", "catalog-parts"]);
   assert.deepEqual(idsOf("desktop", "server"), ["server-pairing", "server-devices"]);
   assert.deepEqual(idsOf("phone", "offline"), ["offline-copy", "offline-conflict"]);

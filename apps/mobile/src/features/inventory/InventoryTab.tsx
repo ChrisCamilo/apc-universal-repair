@@ -36,6 +36,15 @@ import {
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
 import { inventoryTutorialParts, isTestItem, TUTORIAL_CODE, TUTORIAL_ITEM } from '@apc/domain/inventory-tutorial';
 import { PHOTOS_TUTORIAL } from '@apc/domain/photos-tutorial';
+import {
+  IMPORT_TUTORIAL,
+  IMPORT_TUTORIAL_CODES,
+  IMPORT_TUTORIAL_CSV,
+  IMPORT_TUTORIAL_FILE,
+  IMPORT_TUTORIAL_SEARCH,
+  isImportTestItem,
+} from '@apc/domain/import-tutorial';
+import { importedSummary, importItems, readItemsCsv, type CsvItemRow } from '@apc/domain/item-csv';
 import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
@@ -81,6 +90,8 @@ import { CardTitle, StockQuantity } from './browse/ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './tutorial/InventoryTutorial';
 import { PhotosTutorial } from './tutorial/PhotosTutorial';
+import { ImportTutorial } from './tutorial/ImportTutorial';
+import { shareTemplate } from './transfer/csv';
 import { samplePhotos } from './tutorial/samplePhotos';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { useMoreActions } from '../dashboard/moreActionsContext';
@@ -162,7 +173,7 @@ function nameColumn(locale: Locale): ComponentProps<typeof DataTable<InventoryRo
     header: FILTER_LABELS[locale].columns.name,
     card: 'main',
     cell: ({ item }) => (
-      <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
+      <View ref={isTestItem(item) ? tourTarget('tutorial-row') : rowTarget(item)} collapsable={false}>
         <ItemTitle item={item} />
       </View>
     ),
@@ -195,6 +206,15 @@ function photoColumn(
       );
     },
   };
+}
+
+/**
+ * Marks the card of the import tour's first test item, which its "Na lista" points at.
+ * @param item The card's item.
+ * @returns The mark, or none for any other item.
+ */
+function rowTarget(item: Item) {
+  return item.brands.some((brand) => brand.code === IMPORT_TUTORIAL_CODES[0]) ? tourTarget('import-row') : undefined;
 }
 
 type InventoryTabProps = {
@@ -240,7 +260,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const handMore = useMoreActions();
   // Whether "Importar Peças" is open; each opening starts with no file.
-  const [importer, setImporter] = useState({ open: false, session: 0 });
+  // Importar Peças: whether it is open, each opening a new one, and a file it opens having read.
+  const [importer, setImporter] = useState<{ open: boolean; session: number; file?: { name: string; text: string } }>({ open: false, session: 0 });
   // Whether "Exportar Peças" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 });
   // The item form: closed, open on a new item, an item to edit or an item's details (maybe scrolled to a brand),
@@ -273,6 +294,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [tour, setTour] = useState<number[] | null>(null);
   // Whether the photos tour runs.
   const [photosTour, setPhotosTour] = useState(false);
+  // Whether the import tour runs, with the rows of the file Importar Peças read and whether the template was taken.
+  const [importTour, setImportTour] = useState(false);
+  const [importRows, setImportRows] = useState<readonly CsvItemRow[]>([]);
+  const [templateTaken, setTemplateTaken] = useState(false);
   const [sentWith, setSentWith] = useState<Item[]>();
   // The item the delete confirmation asks about, while it is open; and whether the details' own one is open.
   const [removing, setRemoving] = useState<Item>();
@@ -336,7 +361,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     viewer !== undefined ||
     settling ||
     tour !== null ||
-    photosTour;
+    photosTour ||
+    importTour;
   const { sync } = copy;
   useEffect(() => {
     if (overlaid) {
@@ -407,13 +433,17 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     reload();
   };
 
-  /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
-  const deleteTestItem = async () => {
-    const found = await apiFetch(`${apiUrl()}/items?${new URLSearchParams({ q: TUTORIAL_CODE })}`)
+  /**
+   * Deletes a tour's test items, such as one left from a run that didn't end, and loads the list again.
+   * @param query What the search finds them by; the Inventory tour's test item by default.
+   * @param isTest Tells a test item among the items found.
+   */
+  const deleteTestItem = async (query: string = TUTORIAL_CODE, isTest: (item: Item) => boolean = isTestItem) => {
+    const found = await apiFetch(`${apiUrl()}/items?${new URLSearchParams({ q: query })}`)
       .then((response) => (response.ok ? response.json() : null))
       .catch(() => null);
     for (const item of (found?.items ?? []) as Item[]) {
-      if (isTestItem(item)) {
+      if (isTest(item)) {
         await apiFetch(`${apiUrl()}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
       }
     }
@@ -456,9 +486,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
   const { asked } = tutorial;
-  if (!tour && !photosTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
+  if (!tour && !photosTour && !importTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
     if (asked?.id === PHOTOS_TUTORIAL) {
       setPhotosTour(true);
+    } else if (asked?.id === IMPORT_TUTORIAL) {
+      setImportTour(true);
+      setTemplateTaken(false);
+      setImporter((current) => ({ ...current, open: false }));
     } else {
       setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true));
     }
@@ -488,6 +522,17 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       photosStarted();
     }
   }, [photosTour]);
+
+  // The import tour starts without the test items of a run that didn't end.
+  const importStarted = useEffectEvent(() => {
+    tutorial.started();
+    deleteTestItem(IMPORT_TUTORIAL_SEARCH, isImportTestItem);
+  });
+  useEffect(() => {
+    if (importTour) {
+      importStarted();
+    }
+  }, [importTour]);
 
   // The photos of the form's first brand, as it holds them: as last reported, or as it opened.
   const formPhotos = typed?.photos[0] ?? form.photos?.[0] ?? heldPhotos(form.item?.brands[0]?.photos ?? []);
@@ -705,7 +750,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         title={common.moreActions}
         actions={[
           { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
-          { icon: importIcon, label: texts.importItems, onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: importIcon, label: texts.importItems, onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })), tour: 'import-action' },
           { icon: exportIcon, label: texts.exportItems, onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
           { icon: playIcon, label: texts.tutorial, onSelect: () => tutorial.start('inventory-add', true) },
         ]}
@@ -741,6 +786,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         key={`import-${importer.session}`}
         open={importer.open}
         lists={lists}
+        initialFile={importer.file}
+        onRowsChange={setImportRows}
+        onTemplate={() => setTemplateTaken(true)}
         onClose={() => setImporter((current) => ({ ...current, open: false }))}
         onImported={() => {
           setImporter((current) => ({ ...current, open: false }));
@@ -815,6 +863,43 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setRemoving(undefined);
             setForm((current) => ({ ...current, open: false }));
             send(`${apiUrl()}/items/${item.id}`, 'DELETE');
+          },
+        }}
+      />
+      <ImportTutorial
+        open={importTour}
+        onClose={() => {
+          setImportTour(false);
+          setImporter((current) => ({ ...current, open: false }));
+          clearForTutorial();
+          deleteTestItem(IMPORT_TUTORIAL_SEARCH, isImportTestItem);
+        }}
+        screen={{
+          importer: importer.open
+            ? { codes: importRows.map((row) => row.item.brands[0].code), errors: importRows.filter((row) => row.errors.length > 0).length }
+            : null,
+          templateTaken,
+          items,
+          busy: sentWith === items,
+          phone: true,
+          openImporter: () => setImporter((current) => ({ open: true, session: current.session + 1 })),
+          takeTemplate: () => {
+            shareTemplate();
+            setTemplateTaken(true);
+          },
+          chooseSample: () =>
+            setImporter((current) => ({ open: true, session: current.session + 1, file: { name: IMPORT_TUTORIAL_FILE, text: IMPORT_TUTORIAL_CSV } })),
+          // Sent and said as Importar does.
+          importSample: () => {
+            const read = readItemsCsv(IMPORT_TUTORIAL_CSV, lists, locale);
+            setImporter((current) => ({ ...current, open: false }));
+            setSentWith(items);
+            importItems(apiUrl(), 'rows' in read ? read.rows : []).then((result) => {
+              if (result) {
+                toast.success(importedSummary(result, locale));
+              }
+              reload();
+            });
           },
         }}
       />

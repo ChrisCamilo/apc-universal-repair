@@ -269,6 +269,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | each of the three tutorials alone from Tutoriais, a part after the first making the test item | `inventory-tutorial` | both |  |
 |  | an explanation of each feature from Tutoriais: the lists from Mais ações, the Catalog's brands and search, the bell on the open tab | `dashboard-tutorials` | both |  |
 |  | the tour of a brand's photos from Tutoriais: two photos added, the first taken out and the second saved, by hand and with Fazer por mim, and skipped; the test item deleted at the end | `inventory-photos-tutorial` | both |  |
+|  | the tour of importing a CSV from Tutoriais: the template downloaded, the sample file of two test items read, imported and shown, by hand and with Fazer por mim, and skipped; the test items deleted at the end | `inventory-import-tutorial` | both |  |
 | Demo | the demo's find, filter, add, edit, delete | `demo` | both | `@demo` |
 
 #### Catalog (`@catalog`)
@@ -726,6 +727,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | cada um dos três tutoriais sozinho pelo Tutoriais, uma parte depois da primeira criando o item de teste | `inventory-tutorial` | ambos |  |
 |  | uma explicação de cada funcionalidade pelo Tutoriais: as listas em Mais ações, as marcas e a busca do Catálogo, o sino na aba aberta | `dashboard-tutorials` | ambos |  |
 |  | o tour das fotos de uma marca pelo Tutoriais: duas fotos adicionadas, a primeira tirada e a segunda salva, à mão e com Fazer por mim, e pulado; o item de teste excluído no fim | `inventory-photos-tutorial` | ambos |  |
+|  | o tour da importação de um CSV pelo Tutoriais: o modelo baixado, o arquivo de exemplo com duas peças de teste lido, importado e mostrado, à mão e com Fazer por mim, e pulado; as peças de teste excluídas no fim | `inventory-import-tutorial` | ambos |  |
 | Demo | buscar, filtrar, cadastrar, editar, excluir na demo | `demo` | ambos | `@demo` |
 
 #### Catálogo (`@catalog`)
