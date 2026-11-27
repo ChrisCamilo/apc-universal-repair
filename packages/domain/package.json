@@ -40,6 +40,10 @@
       "apc-dist": "./dist/catalog/catalog.js",
       "default": "./src/catalog/catalog.ts"
     },
+    "./catalog-tree-tutorial": {
+      "apc-dist": "./dist/catalog/catalogTreeTutorial.js",
+      "default": "./src/catalog/catalogTreeTutorial.ts"
+    },
     "./catalog-texts": {
       "apc-dist": "./dist/catalog/catalogTexts.js",
       "default": "./src/catalog/catalogTexts.ts"
