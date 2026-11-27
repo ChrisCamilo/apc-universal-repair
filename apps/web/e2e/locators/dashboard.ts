@@ -1,11 +1,12 @@
 import { test, type Page } from "@playwright/test";
 import { DASHBOARD_TEXTS } from "@apc/domain/app-texts";
 import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
+import { TUTORIAL_TEXTS } from "@apc/domain/tutorials";
 import { WEB_TEXTS } from "../../src/app/webTexts.ts";
 import { dialog } from "./common.ts";
 
-// The shell around the tabs: the header, the tab bar, the user menu and its Sobre esta versão; on a phone, the open
-// tab's title and the bottom bar.
+// The shell around the tabs: the header, the tab bar, the user menu with its Tutoriais and Sobre esta versão; on a
+// phone, the open tab's title and the bottom bar.
 
 /**
  * The Dashboard's header, tab bar and content; a tab and its panel are named by the tab's id, so the label is the
@@ -63,6 +64,38 @@ export function aboutDialog(page: Page, locale: Locale = DEFAULT_LOCALE) {
     version: (version: string) => box.root.getByText(`APC Universal Repair ${version}`),
     heading: (name: string) => box.root.getByRole("heading", { name, exact: true }),
   };
+}
+
+/**
+ * Tutoriais, from the user menu: a feature's section, by its header, and a tutorial, by its title.
+ * @param page The test's page.
+ * @returns The dialog and its parts.
+ */
+export function tutorialsDialog(page: Page) {
+  const box = dialog(page, TUTORIAL_TEXTS["pt-BR"].title);
+  return {
+    ...box,
+    section: (name: string) => box.root.getByRole("button", { name: new RegExp(`^${name}`) }),
+    tutorial: (title: string) => box.root.getByRole("button", { name: title, exact: true }),
+  };
+}
+
+/**
+ * Starts a tutorial from Tutoriais, in the user menu.
+ * @param page The test's page.
+ * @param title The tutorial's title, e.g. "Procurar e filtrar".
+ */
+export async function startTutorial(page: Page, title: string) {
+  await test.step(
+    `Start ${title}`,
+    async () => {
+      const menu = userMenu(page);
+      await menu.trigger.click();
+      await menu.item(DASHBOARD_TEXTS["pt-BR"].tutorials).click();
+      await tutorialsDialog(page).tutorial(title).click();
+    },
+    { box: true },
+  );
 }
 
 /**
