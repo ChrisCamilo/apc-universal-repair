@@ -6,6 +6,10 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
+    "./accordion": {
+      "apc-dist": "./dist/accordion/accordion.js",
+      "default": "./src/accordion/accordion.ts"
+    },
     "./button": {
       "apc-dist": "./dist/button/button.js",
       "default": "./src/button/button.ts"
