@@ -1,11 +1,13 @@
 import { INVENTORY_TUTORIAL_PARTS, INVENTORY_TUTORIALS, inventoryTutorialPartSteps, type InventoryTutorialId } from "../inventory/inventoryTutorial.ts";
+import { PHOTOS_TUTORIAL, photosTutorialStepCount, photosTutorialTitle } from "../inventory/photosTutorial.ts";
 import { DASHBOARD_TEXTS } from "../platform/locale/appTexts.ts";
 import { catalog, type Locale } from "../platform/locale/locale.ts";
 
 // The apps' tutorials, by feature, which the user menu's Tutoriais lists: each one's feature, its kind, the apps it shows
 // in and its texts. A guided tour is done on the screen, step by step, or with "Fazer por mim"; an explanation only
 // points at the screen and explains, one to three steps with Next. A tutorial on a tab's feature opens the tab before
-// it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts); an explanation's
+// it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts), and a brand's photos
+// have a guided tour of their own (see photosTutorial.ts); an explanation's
 // steps point at the parts of the screen its targets name, which each app finds its own way (data-tour on the web, a
 // tourTarget ref on the phone), the card sitting in the middle of the screen for a step with no target or one not on
 // screen.
@@ -18,7 +20,6 @@ export const TUTORIAL_PLATFORMS = ["web", "desktop", "phone"] as const;
  * that points at nothing.
  */
 export const EXPLANATIONS = [
-  { id: "inventory-photos", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["new-item", "items"] },
   { id: "inventory-lists", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-import", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-mercado-livre", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
@@ -36,8 +37,10 @@ export const EXPLANATIONS = [
 
 /** An explanation, as the Dashboard runs it. */
 export type ExplanationId = (typeof EXPLANATIONS)[number]["id"];
+/** A guided tour, which its tab runs. */
+export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL;
 /** A tutorial, as its tab or the Dashboard knows it. */
-export type TutorialId = InventoryTutorialId | ExplanationId;
+export type TutorialId = TourId | ExplanationId;
 /** What a tutorial is about, which the dialog groups it under: a tab, or a part of the apps beside the tabs. */
 export type TutorialFeature = "inventory" | "catalog" | "notifications" | "server" | "offline";
 /** How a tutorial teaches: done on the screen, or only pointed at and explained. */
@@ -77,6 +80,7 @@ export const TUTORIALS: readonly Tutorial[] = [
     platforms: TUTORIAL_PLATFORMS,
     steps: inventoryTutorialPartSteps(index + 1),
   })),
+  { id: PHOTOS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: photosTutorialStepCount() },
   ...EXPLANATIONS.map(({ id, feature, platforms, targets }): Tutorial => ({
     id,
     feature,
@@ -104,7 +108,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-add": "Cadastre uma peça de teste, com código, veículo, estoque e valor.",
       "inventory-search": "Ache a peça de teste pela busca e pelos filtros.",
       "inventory-edit": "Edite a peça de teste até ela ficar baixa e esgotada, e depois exclua.",
-      "inventory-photos": "Onde ficam as fotos de cada marca de peça de um item.",
+      "inventory-photos": "Adicione duas fotos à peça de teste, deixe a segunda como capa e salve.",
       "inventory-lists": "Renomeie e junte categorias, marcas de peça e modelos de veículo.",
       "inventory-import": "Cadastre muitas peças de uma vez a partir de uma planilha.",
       "inventory-mercado-livre": "Gere os anúncios das peças para o Anunciador em massa.",
@@ -120,16 +124,6 @@ export const TUTORIAL_TEXTS = catalog(
       "offline-conflict": "O que fazer quando o celular e o computador mudaram o mesmo item.",
     } as Record<TutorialId, string>,
     explanations: {
-      "inventory-photos": {
-        title: "As fotos de uma marca",
-        steps: [
-          {
-            title: "No formulário do item",
-            text: "Cada marca de peça do item tem as próprias fotos, até 3. Adicione ao cadastrar ou editar o item, ou reaproveite as de outra peça, achada pelo código, em Usar fotos de outra peça.",
-          },
-          { title: "Nos detalhes", text: "Abra um item da lista para ver as fotos de cada marca em tamanho grande." },
-        ],
-      },
       "inventory-lists": {
         title: "As listas",
         steps: [
@@ -283,7 +277,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-add": "Add a test part, with its code, vehicle, stock and price.",
       "inventory-search": "Find the test part with the search and the filters.",
       "inventory-edit": "Edit the test part until it is low and out of stock, then delete it.",
-      "inventory-photos": "Where the photos of each part brand of an item are.",
+      "inventory-photos": "Add two photos to the test part, make the second the cover and save.",
       "inventory-lists": "Rename and join categories, part brands and vehicle models.",
       "inventory-import": "Add many parts at once from a spreadsheet.",
       "inventory-mercado-livre": "Make the parts' listings for the Bulk lister.",
@@ -299,16 +293,6 @@ export const TUTORIAL_TEXTS = catalog(
       "offline-conflict": "What to do when the phone and the computer changed the same item.",
     },
     explanations: {
-      "inventory-photos": {
-        title: "A brand's photos",
-        steps: [
-          {
-            title: "In the item form",
-            text: "Each part brand of the item has its own photos, up to 3. Add them when adding or editing the item, or reuse another part's, found by its code, in Use photos of another part.",
-          },
-          { title: "In the details", text: "Open an item from the list to see each brand's photos full size." },
-        ],
-      },
       "inventory-lists": {
         title: "The lists",
         steps: [
@@ -497,5 +481,8 @@ export function tutorialSections(platform: TutorialPlatform, locale: Locale): Tu
  * @returns E.g. "Cadastrar um item".
  */
 export function tutorialTitle(id: TutorialId, locale: Locale): string {
-  return isExplanation(id) ? TUTORIAL_TEXTS[locale].explanations[id].title : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
+  if (isExplanation(id)) {
+    return TUTORIAL_TEXTS[locale].explanations[id].title;
+  }
+  return id === PHOTOS_TUTORIAL ? photosTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
 }
