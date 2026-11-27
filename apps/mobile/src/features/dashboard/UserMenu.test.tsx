@@ -277,7 +277,7 @@ test('Mobile: Tutoriais opens the tutorials by feature, and a tutorial starts it
   expect(tree.root.findByType(TutorialsDialog).props.open).toBe(true);
   expect(byName(tree, 'Estoque, 8 tutoriais').props.accessibilityState).toEqual({ expanded: true });
   expect(byName(tree, 'Modo offline, 2 tutoriais').props.accessibilityState).toEqual({ expanded: true });
-  expect(byName(tree, 'As listas').props.accessibilityHint).toBe('Renomeie e junte categorias, marcas de peça e modelos de veículo. Explicação · 2 passos');
+  expect(byName(tree, 'Exportar para o Mercado Livre').props.accessibilityHint).toBe('Gere os anúncios das peças para o Anunciador em massa. Explicação · 2 passos');
   expect(byName(tree, 'Procurar e filtrar').props.accessibilityHint).toBe('Ache a peça de teste pela busca e pelos filtros. Tour guiado · 4 passos');
   expect(byName(tree, 'Cadastrar um item')).toBeDefined();
   expect(byName(tree, 'Editar e excluir').props.accessibilityHint).toMatch(/Tour guiado · 10 passos$/);
