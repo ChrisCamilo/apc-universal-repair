@@ -35,6 +35,7 @@ import {
 } from '@apc/domain/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
 import { inventoryTutorialParts, isTestItem, TUTORIAL_CODE, TUTORIAL_ITEM } from '@apc/domain/inventory-tutorial';
+import { PHOTOS_TUTORIAL } from '@apc/domain/photos-tutorial';
 import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
@@ -79,6 +80,8 @@ import { useTutorials } from '../dashboard/tutorialsContext';
 import { CardTitle, StockQuantity } from './browse/ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './tutorial/InventoryTutorial';
+import { PhotosTutorial } from './tutorial/PhotosTutorial';
+import { samplePhotos } from './tutorial/samplePhotos';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { useMoreActions } from '../dashboard/moreActionsContext';
 import { COMMON_TEXTS, COMPONENT_TEXTS } from '@apc/domain/app-texts';
@@ -254,9 +257,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     open: false,
     session: 0,
   });
-  // The form as typed, and whether it shows the details, which the tutorial's steps read.
-  const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean }>();
-  const followForm = useCallback((values: ItemForm, viewing: boolean) => setTyped({ values, viewing }), []);
+  // The form as typed, whether it shows the details and each brand's photos, which the tutorials' steps read.
+  const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean; photos: readonly UploadPhoto[][] }>();
+  const followForm = useCallback(
+    (values: ItemForm, viewing: boolean, photos: readonly UploadPhoto[][]) => setTyped({ values, viewing, photos }),
+    [],
+  );
   // Whether the filter sheet is open, and the sort sheet.
   const [filtering, setFiltering] = useState(false);
   const [sorting, setSorting] = useState(false);
@@ -265,6 +271,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // last sent a change: until the list loads again, the change is still on its way, and the tour doesn't take it as
   // left undone.
   const [tour, setTour] = useState<number[] | null>(null);
+  // Whether the photos tour runs.
+  const [photosTour, setPhotosTour] = useState(false);
   const [sentWith, setSentWith] = useState<Item[]>();
   // The item the delete confirmation asks about, while it is open; and whether the details' own one is open.
   const [removing, setRemoving] = useState<Item>();
@@ -327,7 +335,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     removing !== undefined ||
     viewer !== undefined ||
     settling ||
-    tour !== null;
+    tour !== null ||
+    photosTour;
   const { sync } = copy;
   useEffect(() => {
     if (overlaid) {
@@ -447,8 +456,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
   const { asked } = tutorial;
-  if (!tour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
-    setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true));
+  if (!tour && !photosTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
+    if (asked?.id === PHOTOS_TUTORIAL) {
+      setPhotosTour(true);
+    } else {
+      setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true));
+    }
     clearForTutorial();
   }
 
@@ -464,6 +477,27 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       tutorialStarted();
     }
   }, [tour]);
+
+  // The photos tour starts on the test item, made anew.
+  const photosStarted = useEffectEvent(() => {
+    tutorial.started();
+    readyTestItem(true);
+  });
+  useEffect(() => {
+    if (photosTour) {
+      photosStarted();
+    }
+  }, [photosTour]);
+
+  // The photos of the form's first brand, as it holds them: as last reported, or as it opened.
+  const formPhotos = typed?.photos[0] ?? form.photos?.[0] ?? heldPhotos(form.item?.brands[0]?.photos ?? []);
+  const testItem = items.find(isTestItem);
+  /** Opens the edit of the test item with its first brand's photos given. */
+  const editPhotos = (photos: UploadPhoto[]) => {
+    if (testItem) {
+      openForm(testItem, false, typed?.values, [photos]);
+    }
+  };
 
   // Asked for while the server can't be reached, the tour says it needs it.
   const askRefused = useEffectEvent(() => {
@@ -781,6 +815,34 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setRemoving(undefined);
             setForm((current) => ({ ...current, open: false }));
             send(`${apiUrl()}/items/${item.id}`, 'DELETE');
+          },
+        }}
+      />
+      <PhotosTutorial
+        open={photosTour}
+        onClose={() => {
+          setPhotosTour(false);
+          clearForTutorial();
+          deleteTestItem();
+        }}
+        screen={{
+          form: form.open ? { item: form.item, viewing: typed?.viewing ?? Boolean(form.details), photos: formPhotos.length } : null,
+          items,
+          busy: sentWith === items,
+          phone: true,
+          openForm: (item, details) => openForm(item, details),
+          addSamplePhotos: () => editPhotos([...formPhotos, ...samplePhotos()].slice(0, ITEM_PHOTO_LIMIT)),
+          removeFirstPhoto: () => editPhotos(formPhotos.slice(1)),
+          // Queued as the form's save queues them, then the list loads again.
+          savePhotos: () => {
+            if (!testItem) {
+              return;
+            }
+            setForm((current) => ({ ...current, open: false }));
+            setSentWith(items);
+            photosOperation({ itemId: testItem.id, brandId: testItem.brands[0].id, label: testItem.name }, testItem.brands[0].photos, formPhotos)
+              .then((change) => change && enqueue([change]))
+              .then(reload, () => {});
           },
         }}
       />

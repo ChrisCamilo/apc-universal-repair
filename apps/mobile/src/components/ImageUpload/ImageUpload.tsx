@@ -4,6 +4,7 @@ import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@a
 import { takePhotos, type PhotoFile } from '@apc/domain/photos';
 import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
+import { tourTarget } from '../Tour/tourTargets';
 import { useStyles } from './ImageUpload.styles';
 import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
@@ -35,9 +36,11 @@ type ImageUploadProps = {
   onTake: () => Promise<PickedPhoto[]>;
   /** Only shows the photos; nothing can be added or removed. */
   readOnly?: boolean;
+  /** Marks the first photo's × for a tutorial to point at, by name (see tourTarget). */
+  tour?: string;
 };
 
-export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTake, readOnly = false }: ImageUploadProps) {
+export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTake, readOnly = false, tour }: ImageUploadProps) {
   const { colors } = useTheme();
   const { locale } = useLocale();
   const texts = COMPONENT_TEXTS[locale].imageUpload;
@@ -115,6 +118,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
                 )}
                 {!readOnly && (
                   <Pressable
+                    ref={tour && index === 0 ? tourTarget(tour) : undefined}
                     accessibilityRole="button"
                     accessibilityLabel={texts.remove(index + 1)}
                     hitSlop={scales.space.s2}
