@@ -42,6 +42,8 @@ type MenuProps = {
   /** Called when the menu opens or closes, e.g. to mark what it lists as seen. */
   onOpenChange?: (open: boolean) => void
   children: ReactNode
+  /** Names the trigger for a tutorial to point at. */
+  'data-tour'?: string
 }
 
 /**
@@ -66,7 +68,7 @@ function keyTarget(key: string, index: number, count: number): number | null {
   }
 }
 
-export function Menu({ label, trigger, align = 'end', anchor = 'trigger', variant = 'pill', open: owned, onOpenChange, children }: MenuProps) {
+export function Menu({ label, trigger, align = 'end', anchor = 'trigger', variant = 'pill', open: owned, onOpenChange, children, 'data-tour': tour }: MenuProps) {
   const menuId = useId()
   const [kept, setOpen] = useState(false)
   const open = owned ?? kept
@@ -138,6 +140,7 @@ export function Menu({ label, trigger, align = 'end', anchor = 'trigger', varian
         aria-controls={menuId}
         className={classes.trigger()}
         data-testid={ids.trigger}
+        data-tour={tour}
         onClick={() => toggle(!open)}
       >
         {trigger}

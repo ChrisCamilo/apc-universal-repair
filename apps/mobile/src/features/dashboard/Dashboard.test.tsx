@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Modal, ScrollView, StyleSheet, Text } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_TOUCH_TARGET, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
@@ -11,6 +11,7 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Dashboard } from './Dashboard';
 import { BOTTOM_BAR_HEIGHT } from './Dashboard.styles';
+import { useTutorials } from './tutorialsContext';
 import { enqueue } from '../sync/inventoryCopy';
 import { InventoryTutorial } from '../inventory/tutorial/InventoryTutorial';
 import { themeStorage, ThemeProvider } from '../../app/theme';
@@ -186,9 +187,38 @@ test('Mobile: a tab with no other actions has no "⋯"', async () => {
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Mais ações')).toHaveLength(0);
 });
 
+// Starts an explanation of the Catálogo from the Estoque and checks the Catálogo opens; then the bell's, which has no tab,
+// and checks the Catálogo stays open; then the offline mode's, which opens the Estoque, where the phone's copy shows.
+test('Mobile: an explanation opens its tab, if it has one', async () => {
+  const tree = await mount('eighties', 'night', <Dashboard userMenu={<Explain />} />);
+  const title = () => tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header.title' && typeof n.type === 'string').props.children;
+  expect(title()).toBe('Estoque');
+  for (const [id, tab] of [
+    ['catalog-browse', 'Catálogo'],
+    ['notifications-bell', 'Catálogo'],
+    ['offline-copy', 'Estoque'],
+  ] as const) {
+    const button = tree.root.find((n) => n.props.accessibilityLabel === id && typeof n.props.onPress === 'function');
+    await ReactTestRenderer.act(async () => button.props.onPress());
+    expect(title()).toBe(tab);
+  }
+});
+
 // Opens the Dashboard in English, and checks its tabs read in English.
 test('Mobile: the Dashboard reads in English', async () => {
   const tree = await mount('eighties', 'night', <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}><Dashboard userMenu={null} /></LocaleContext.Provider>);
   expect(shows(tree, 'Inventory')).toBe(true);
   expect(shows(tree, 'Catalog')).toBe(true);
 });
+
+/** The user menu's stand-in: a button per explanation the test starts, named by its id. */
+function Explain() {
+  const tutorials = useTutorials();
+  return (
+    <>
+      {(['catalog-browse', 'notifications-bell', 'offline-copy'] as const).map((id) => (
+        <Pressable key={id} accessibilityRole="button" accessibilityLabel={id} onPress={() => tutorials.start(id)} />
+      ))}
+    </>
+  );
+}

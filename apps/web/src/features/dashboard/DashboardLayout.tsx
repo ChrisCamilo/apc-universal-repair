@@ -17,6 +17,7 @@ import { WorkInProgress } from '../../components/WorkInProgress'
 import { readStored, writeStored } from '../../app/storage.ts'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
+import { ExplanationTour } from './ExplanationTour.tsx'
 import { TutorialsContext, useTutorialsChoice } from './tutorialsContext.ts'
 import { MoreActionsContext } from './moreActionsContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
@@ -30,7 +31,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // dragged (or moved with Alt + arrows) into a new order, which is saved and comes back on reload, with tabs added
 // later at its end; the open tab stays open. The Dashboard also holds "Itens por página", which the user menu sets
 // and the Inventory tab follows, and the tutorials' state: a tutorial the user menu's Tutoriais starts opens its tab,
-// which runs it, as the Inventory tab runs its tour by itself the first time (see tutorialsContext.ts). A tab still being built (`wip` in
+// which runs it, as the Inventory tab runs its tour by itself the first time (see tutorialsContext.ts); an explanation
+// the Dashboard runs itself, over its tab if it has one (see ExplanationTour.tsx). A tab still being built (`wip` in
 // DASHBOARD_TABS) opens blurred behind a notice saying it isn't ready yet.
 // On a phone (below `card:`) the header gives way to the phone layout (see DashboardLayout.styles.ts): the open tab's
 // header, with the APC mark and the tab's name as the page's heading, over its content, and a bar fixed at the bottom
@@ -139,9 +141,12 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
         <TutorialsContext.Provider
           value={{
             ...tutorials,
-            // A tutorial runs on its feature's tab.
+            // A tutorial runs on its feature's tab, if it has one.
             start: (id, onward) => {
-              navigate(`/${TUTORIALS.find((tutorial) => tutorial.id === id)!.feature}`)
+              const opens = TUTORIALS.find((tutorial) => tutorial.id === id)!.tab
+              if (opens) {
+                navigate(`/${opens}`)
+              }
               tutorials.start(id, onward)
             },
           }}
@@ -158,6 +163,7 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
                     {panel}
                   </AppFrame>
                 )}
+                <ExplanationTour id={tutorials.explaining} onClose={tutorials.explained} />
               </InventoryLinkContext.Provider>
             </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>
@@ -196,7 +202,7 @@ function PhoneDashboard({ title, back, tabs, end, more, children }: PhoneDashboa
           {title}
         </h1>
         {more && (
-          <button type="button" aria-label={common.moreActions} aria-haspopup="dialog" className={classes.more()} data-testid={ids.more} onClick={more}>
+          <button type="button" aria-label={common.moreActions} aria-haspopup="dialog" className={classes.more()} data-testid={ids.more} data-tour="more-actions" onClick={more}>
             <Icon icon={moreIcon} size={ICON_SIZES.fab} />
           </button>
         )}

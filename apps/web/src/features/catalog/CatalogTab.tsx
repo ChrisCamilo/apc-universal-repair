@@ -364,7 +364,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
-      <Panel className={classes.rail()}>
+      <Panel className={classes.rail()} data-tour="catalog-brands">
         <SearchField label={web.searchBrand} value={brandQuery} onValueChange={setBrandQuery} />
         <Switch checked={partsOnly} onCheckedChange={showPartsOnly} disabled={withParts.brands.length === 0}>
           {texts.partsOnly}
@@ -393,10 +393,10 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
         )}
       </Panel>
       <div className={classes.main()} data-testid={ids.main}>
-        <SearchField label={texts.searchModel} value={query} onValueChange={search} />
+        <SearchField data-tour="catalog-search" label={texts.searchModel} value={query} onValueChange={search} />
         {searchingParts && <PartResults catalog={catalog} results={results} chosen={part?.id} onChoose={choosePart} />}
         <div className={classes.body()} data-testid={ids.body}>
-          <Panel className={classes.models()}>
+          <Panel className={classes.models()} data-tour="catalog-models">
             <div className={classes.modelsHead()} data-testid={ids.modelsHead}>
               <h3 className={classes.modelsTitle()} data-testid={ids.modelsTitle}>
                 {texts.modelsCount(brand.models.length)}
@@ -457,7 +457,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
               <NoModel none={brand.models.length === 0} />
             )}
           </Panel>
-          <div className={classes.detail()} data-testid={ids.detail}>
+          <div className={classes.detail()} data-testid={ids.detail} data-tour="catalog-sheet">
             {!sheetEditing && (
               <ImageFrame
                 alt={sheet ? texts.sheetPhoto(sheet.title) : car ? texts.sheetPhoto(carSheet(catalog, brandId, car.id).title) : texts.modelPhoto}
@@ -650,7 +650,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
 
   const search = (
     <>
-      <SearchField label={texts.searchModel} value={query} onValueChange={setQuery} />
+      <SearchField data-tour="catalog-search" label={texts.searchModel} value={query} onValueChange={setQuery} />
       {searchingParts && <PartResults catalog={catalog} results={results} onChoose={choosePart} />}
     </>
   )
@@ -787,7 +787,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
           </Button>
         </div>
         {brands.length > 0 ? (
-          <ul className={classes.brandList()} data-testid={ids.brandList}>
+          <ul className={classes.brandList()} data-testid={ids.brandList} data-tour="catalog-brands">
             {brands.map((each) => (
               <li key={each.id}>
                 <button type="button" className={classes.brand()} data-testid={ids.brand} onClick={() => setScreen({ view: 'models', brandId: each.id })}>

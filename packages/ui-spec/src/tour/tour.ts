@@ -104,7 +104,8 @@ export function spotlightRect(target: TourRect): TourRect {
  * @param parts Names of the tour's parts, e.g. ["Criar um item", "Procurar e filtrar"].
  * @param texts How a part and the end are written in the language chosen.
  * @returns E.g. { part: "Parte 1 de 3 · Criar um item", count: "2 / 18" }; the last step without a part reads
- * "Tutorial concluído", any other step without a part has no part text.
+ * "Tutorial concluído", any other step without a part has no part text. A tour of one part, such as an explanation,
+ * names it alone: "As listas".
  */
 export function stepHeader<Target>(
   steps: readonly TourStep<Target>[],
@@ -115,7 +116,7 @@ export function stepHeader<Target>(
   const { part } = steps[index];
   const last = index === steps.length - 1;
   return {
-    part: part ? texts.part(part, parts.length, parts[part - 1]) : last ? texts.done : "",
+    part: part ? (parts.length === 1 ? parts[0] : texts.part(part, parts.length, parts[part - 1])) : last ? texts.done : "",
     count: `${index + 1} / ${steps.length}`,
   };
 }

@@ -18,6 +18,8 @@ type FilterChipGroupProps = {
   label: string
   options: ChipOption[]
   size?: ChipSize
+  /** Names the group for a tutorial to point at. */
+  'data-tour'?: string
 } & (
   | { multiple: true; value: string[]; onValueChange: (value: string[]) => void }
   | { multiple?: false; value: string | null; onValueChange: (value: string | null) => void }
@@ -46,11 +48,11 @@ export function FilterChip({ pressed, onPressedChange, size = 'md', className, c
 }
 
 export function FilterChipGroup(props: FilterChipGroupProps) {
-  const { label, options, size = 'md' } = props
+  const { label, options, size = 'md', 'data-tour': tour } = props
   const order = options.map((o) => o.value)
   const { classes, ids } = filterChipGroup()
   return (
-    <span role="group" aria-label={label} className={classes.base()} data-testid={ids.base}>
+    <span role="group" aria-label={label} className={classes.base()} data-testid={ids.base} data-tour={tour}>
       {options.map((option) => (
         <FilterChip
           key={option.value}
