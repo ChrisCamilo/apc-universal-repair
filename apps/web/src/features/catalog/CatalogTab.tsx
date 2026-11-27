@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useEffectEvent, useState } from 'react'
 import {
   belowBrand,
   belowNode,
@@ -71,6 +71,9 @@ import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { WEB_TEXTS } from '../../app/webTexts.ts'
+import { CATALOG_TREE_TUTORIAL, changeCatalogTree, removeCatalogTreeModel } from '@apc/domain/catalog-tree-tutorial'
+import { TutorialsContext } from '../dashboard/tutorialsContext.ts'
+import { CatalogTreeTutorial } from './CatalogTreeTutorial.tsx'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
 // the chosen engine's sheet. A brand opens on its first engine; one with no engine yet says so in the detail
@@ -134,6 +137,10 @@ type CatalogProps = {
   partsOnly: boolean
   onPartsOnly: (on: boolean) => void
   onChanged: (catalog: Catalog) => void
+  /** A phone's screen to open on, e.g. the brand of the tree tour; the brands by default. */
+  start?: CatalogScreen
+  /** Bumped when the tree tour makes a change itself, which closes what is being edited. */
+  closeEdits?: number
 }
 
 export function CatalogTab() {
@@ -141,14 +148,84 @@ export function CatalogTab() {
   const stock = useItems()
   const [partsOnly, setPartsOnly] = usePartsOnly()
   const phone = usePhone()
+  const { locale } = useLocale()
   const { classes, ids } = catalogTab()
   const texts = useMessages(CATALOG_SCREEN_TEXTS)
   const common = useMessages(COMMON_TEXTS)
+  const tutorials = useContext(TutorialsContext)
+  // Whether the tree tour runs, and how many times it started, which opens the layouts anew on its brand.
+  const [tour, setTour] = useState(false)
+  const [tours, setTours] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [closeEdits, setCloseEdits] = useState(0)
   const items = stock.status === 'ready' ? stock.items : []
   const waiting = partsOnly && stock.status === 'loading'
-  if (state.status === 'ready' && state.catalog.brands.length > 0 && !waiting) {
-    const props = { catalog: state.catalog, items, partsOnly, onPartsOnly: setPartsOnly, onChanged: state.replace }
-    return phone ? <PhoneCatalog {...props} /> : <WideCatalog {...props} />
+  const ready = state.status === 'ready' && state.catalog.brands.length > 0
+  // The tour's brand: the catalog's first.
+  const brand = ready ? state.catalog.brands[0] : null
+
+  // The tree tour, asked for from Tutoriais, runs once the catalog is in, on all its models.
+  if (ready && !tour && tutorials?.asked?.id === CATALOG_TREE_TUTORIAL) {
+    setTour(true)
+    setTours((count) => count + 1)
+    setPartsOnly(false)
+  }
+
+  /** Deletes the tour's test model, with its tree, and loads the catalog again. */
+  const removeTestModel = async () => {
+    if (brand && (await removeCatalogTreeModel('/api', locale, brand))) {
+      state.reload()
+    }
+  }
+
+  // It starts without a test model left from a run that didn't end.
+  const tourStarted = useEffectEvent(() => {
+    tutorials?.started()
+    void removeTestModel()
+  })
+  useEffect(() => {
+    if (tour) {
+      tourStarted()
+    }
+  }, [tour])
+
+  /** Makes a change of the test tree, as "Fazer por mim" asks, and shows the catalog it answers. */
+  const changeTree = async (change: Parameters<typeof changeCatalogTree>[2]) => {
+    setCloseEdits((count) => count + 1)
+    setBusy(true)
+    const changed = await changeCatalogTree('/api', locale, change)
+    setBusy(false)
+    if (changed && state.status === 'ready') {
+      state.replace(changed)
+    }
+  }
+
+  if (ready && !waiting) {
+    const props = { catalog: state.catalog, items, partsOnly, onPartsOnly: setPartsOnly, onChanged: state.replace, closeEdits }
+    return (
+      <>
+        {phone ? (
+          <PhoneCatalog key={tours} {...props} start={tours > 0 && brand ? { view: 'models', brandId: brand.id } : undefined} />
+        ) : (
+          <WideCatalog key={tours} {...props} />
+        )}
+        <CatalogTreeTutorial
+          open={tour}
+          onClose={() => {
+            setTour(false)
+            void removeTestModel()
+          }}
+          screen={{
+            brand,
+            busy,
+            phone,
+            addModel: () => brand && void changeTree({ addModel: brand }),
+            addUnder: (node, values) => void changeTree({ addUnder: node, values }),
+            moveUp: (node) => void changeTree({ moveUp: node }),
+          }}
+        />
+      </>
+    )
   }
   return (
     <div className={classes.status()} data-testid={ids.status}>
@@ -191,7 +268,7 @@ function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) 
 }
 
 /** The Catalog from a tablet up: the rail, the tree and the detail column, with the tree edited in place. */
-function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
+function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, closeEdits = 0 }: CatalogProps) {
   const { locale } = useLocale()
   const texts = CATALOG_SCREEN_TEXTS[locale]
   const common = COMMON_TEXTS[locale]
@@ -222,6 +299,12 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
       }
     },
   })
+  // The tree tour's "Fazer por mim" makes the change itself: what was being edited closes.
+  const [closed, setClosed] = useState(closeEdits)
+  if (closeEdits !== closed) {
+    setClosed(closeEdits)
+    editor.edit(null)
+  }
   const { editing, sheet: sheetEditing, removing } = editor
   const brand = catalog.brands.find((b) => b.id === brandId)!
   const results = findParts(items, query)
@@ -541,7 +624,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
 }
 
 /** The Catalog on a phone: one screen at a time, the brands, a brand's models or an engine's sheet, edited in sheets. */
-function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
+function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, start, closeEdits = 0 }: CatalogProps) {
   const { locale } = useLocale()
   const texts = CATALOG_SCREEN_TEXTS[locale]
   const common = COMMON_TEXTS[locale]
@@ -550,7 +633,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
   const withParts = catalogWithParts(all, items)
   const partsOnly = wanted && withParts.brands.length > 0
   const catalog = partsOnly ? withParts : all
-  const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME)
+  const [screen, setScreen] = useState<CatalogScreen>(start ?? CATALOG_HOME)
   const [query, setQuery] = useState('')
   const links = useInventoryLink()
   // The node whose actions are open in a bottom sheet.
@@ -566,6 +649,13 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
     },
     onBrandRemoved: () => setScreen(CATALOG_HOME),
   })
+  // The tree tour's "Fazer por mim" makes the change itself: what was being edited, and the actions open, close.
+  const [closed, setClosed] = useState(closeEdits)
+  if (closeEdits !== closed) {
+    setClosed(closeEdits)
+    editor.edit(null)
+    setActing(undefined)
+  }
   const { editing, sheet: sheetEditing } = editor
   const results = findParts(items, query)
   const searchingParts = results.parts.length > 0
