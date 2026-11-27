@@ -157,6 +157,11 @@ test("Desktop: the installer asks the language, keeps it for the uninstaller and
   assert.match(installerMacro("preInit"), /StrCpy \$LANGUAGE \$\{LANG_APC_PT\}/);
   assert.match(INSTALLER_SCRIPT, /!define LANGUAGE_KEY "Software\\\$\{APP_GUID\}"/);
   assert.match(INSTALLER_SCRIPT, /!define MUI_LANGDLL_REGISTRY_KEY "\$\{LANGUAGE_KEY\}"/);
+  // An update from a version that kept no language keeps Portuguese before the dialog, which then doesn't show.
+  assert.match(
+    installerMacro("preInit"),
+    /\$\{If\} \$\{isUpdated\}\s+ReadRegStr \$R0 HKCU "\$\{LANGUAGE_KEY\}" "\$\{MUI_LANGDLL_REGISTRY_VALUENAME\}"\s+\$\{If\} \$R0 == ""\s+WriteRegStr HKCU "\$\{LANGUAGE_KEY\}" "\$\{MUI_LANGDLL_REGISTRY_VALUENAME\}" \$\{LANG_APC_PT\}/,
+  );
   const install = installerMacro("customInstall");
   assert.match(install, /WriteRegStr HKCU "\$\{LANGUAGE_KEY\}" "\$\{MUI_LANGDLL_REGISTRY_VALUENAME\}" \$LANGUAGE/);
   assert.match(install, /\$\{IfNot\} \$\{Silent\}\s+\$\{AndIfNot\} \$\{isUpdated\}\s+\$\{If\} \$LANGUAGE == \$\{LANG_APC_EN\}\s+StrCpy \$R3 "en-US"\s+\$\{Else\}\s+StrCpy \$R3 "pt-BR"/);
