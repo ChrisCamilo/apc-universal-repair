@@ -235,8 +235,9 @@ test('Web: on a phone the user menu opens from Conta as a bottom sheet', async (
   await expect.element(screen.getByRole('dialog', { name: 'Sobre esta versão' })).toBeVisible()
 })
 
-// Opens "Tutoriais" and checks it lists the Inventory's three tutorials in its open section, each saying what it is, its
-// kind and its steps; pressing one closes the dialog and starts that tutorial alone.
+// Opens "Tutoriais" and checks it lists the Inventory's three tours and its explanations in its open section, each saying
+// what it is, its kind and its steps, then the Catálogo's and the Notificações', and no Servidor's in a browser;
+// pressing one closes the dialog and starts that tutorial alone.
 test('Web: Tutoriais opens the tutorials by feature, and a tutorial starts its tour', async () => {
   const start = vi.fn()
   const screen = await render(<Sample start={start} />)
@@ -244,7 +245,13 @@ test('Web: Tutoriais opens the tutorials by feature, and a tutorial starts its t
   await screen.getByRole('menuitem', { name: 'Tutoriais' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Tutoriais' })
   await expect.element(dialog.getByRole('button', { name: /Estoque/ })).toHaveAttribute('aria-expanded', 'true')
-  await expect.element(dialog.getByText('3 tutoriais')).toBeVisible()
+  await expect.element(dialog.getByText('8 tutoriais')).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'As listas' })).toHaveAccessibleDescription(
+    'Renomeie e junte categorias, marcas de peça e modelos de veículo. Explicação · 2 passos',
+  )
+  await expect.element(dialog.getByRole('button', { name: /Catálogo/ })).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(dialog.getByRole('button', { name: /Notificações/ })).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(dialog.getByRole('button', { name: /Servidor/ })).not.toBeInTheDocument()
   const search = dialog.getByRole('button', { name: 'Procurar e filtrar' })
   await expect.element(search).toHaveAccessibleDescription('Ache a peça de teste pela busca e pelos filtros. Tour guiado · 4 passos')
   await expect.element(dialog.getByRole('button', { name: 'Cadastrar um item' })).toBeVisible()
@@ -276,7 +283,7 @@ test('Web: Tutoriais reads in English', async () => {
   await screen.getByRole('button', { name: 'User menu' }).click()
   await screen.getByRole('menuitem', { name: 'Tutorials' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Tutorials' })
-  await expect.element(dialog.getByText('3 tutorials')).toBeVisible()
+  await expect.element(dialog.getByText('8 tutorials')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: /Inventory/ })).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Add an item' })).toHaveAccessibleDescription(
     'Add a test part, with its code, vehicle, stock and price. Guided tour · 4 steps',
@@ -303,7 +310,7 @@ test('Web: in the desktop app the user menu opens the Servidor dialog', async ()
 function Sample({ openServerSettings = () => {}, start = () => {} }: { openServerSettings?: () => void; start?: () => void }) {
   const [user, setUser] = useState<SessionUser | null>(USER)
   return (
-    <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {} }}>
+    <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {}, explaining: null, explained: () => {} }}>
     <ServerSettingsContext.Provider value={openServerSettings}>
       <MemoryRouter initialEntries={['/inventory']}>
         <ThemeProvider>

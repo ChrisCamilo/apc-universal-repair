@@ -47,7 +47,7 @@ import {
   matchingCount,
 } from '@apc/domain/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form'
-import { INVENTORY_TUTORIALS, inventoryTutorialParts, TUTORIAL_CODE, TUTORIAL_ITEM, type TutorialScreen } from '@apc/domain/inventory-tutorial'
+import { inventoryTutorialParts, TUTORIAL_CODE, TUTORIAL_ITEM, type TutorialScreen } from '@apc/domain/inventory-tutorial'
 import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
 import { perLocale, type Locale } from '@apc/domain/locale'
@@ -510,7 +510,7 @@ export function InventoryTab() {
 
   // Run the tour by itself the first time, from its first part on, once the items are in, and a tutorial of its when
   // one is asked for.
-  const asked = tutorial.asked && (INVENTORY_TUTORIALS as readonly string[]).includes(tutorial.asked.id) ? tutorial.asked : null
+  const { asked } = tutorial
   if (!tour && ((!tutorial.seen && state.status === 'ready') || asked)) {
     setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true))
     clearForTutorial()
@@ -602,7 +602,7 @@ export function InventoryTab() {
           </div>
           {!phone && (
             <div className={classes.buttons()} data-testid={ids.buttons}>
-              <Menu label={common.moreActions} variant="secondary" trigger={common.moreActions}>
+              <Menu label={common.moreActions} variant="secondary" trigger={common.moreActions} data-tour="more-actions">
                 <MenuItem icon={listIcon} onSelect={() => setManaging(true)}>
                   {texts.lists.title}
                 </MenuItem>
@@ -653,6 +653,7 @@ export function InventoryTab() {
             </>
           )}
           <FilterChipGroup
+            data-tour="status"
             label={texts.status}
             options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : [], locale) : STATUS_OPTIONS[locale]}
             value={status}
@@ -673,7 +674,7 @@ export function InventoryTab() {
             </p>
           )}
         </div>
-        <div className={inventoryTab({ centered: failed }).classes.list()} data-testid={ids.list}>
+        <div className={inventoryTab({ centered: failed }).classes.list()} data-testid={ids.list} data-tour="items">
           {failed && (
             <ErrorState
               title={texts.error.title}
